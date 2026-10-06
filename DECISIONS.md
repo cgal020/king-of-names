@@ -18,3 +18,7 @@ One line per meaningful decision or deviation from the brief, newest last.
 - 2026-10-06: Recording duration is reported by the device and checked against the 90 s cap plus a 10 MB size cap; the server does not decode audio.
 - 2026-10-06: Audio is uploaded with its base MIME type (for example `audio/webm`, without `;codecs=opus`) to match the bucket's allowed types.
 - 2026-10-06: Placeholder name "PeopleMap" with a muted green accent, both set in `lib/config.ts`.
+- 2026-10-06: Built a clickable mockup of Capture, Review, People, Profile, Map and Settings with sample data (`lib/mock/`) before milestones 2 to 7, at Ann's request, to review look and flow. Screens and components are the real ones; milestones 2 to 7 replace the sample data with Supabase and delete `lib/mock/`.
+- 2026-10-06: Design direction "quiet utility" (Apple Notes, Things), avoid corporate-CRM feel; recorded in PRODUCT.md.
+- 2026-10-06: System font stack instead of a web font: native feel on iPhone and Android, nothing to download, works offline.
+- 2026-10-06: Optional fields (phone, birthday, follow-up, company, email) stay hidden behind "+" chips until they have a value, so review is a glance rather than a form.

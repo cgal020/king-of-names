@@ -1,10 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Geist } from "next/font/google";
 import { appConfig } from "@/lib/config";
-import { cn } from "@/lib/utils";
 import "./globals.css";
-
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: appConfig.name,
@@ -31,7 +27,7 @@ const brandCss = `
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={cn("font-sans antialiased", geist.variable)}>
+    <html lang="en" className="font-sans antialiased">
       <head>
         <style>{brandCss}</style>
       </head>
