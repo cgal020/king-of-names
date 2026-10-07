@@ -1,6 +1,6 @@
 // Sample data for the clickable mockup. Replaced by Supabase queries from
 // milestone 3 onwards; delete this folder then.
-import type { Draft, Person } from "@/lib/types";
+import type { Draft, Encounter, Person } from "@/lib/types";
 
 type Seed = Partial<Person> & Pick<Person, "id" | "full_name" | "met_at">;
 
@@ -324,3 +324,67 @@ export const mockNotes: Record<string, { transcript: string; durationSeconds: nu
     durationSeconds: 19,
   },
 };
+
+// Later meetings for a few sample people ("met again"). The first meeting
+// comes from the person record itself.
+export const mockLaterMeetings: Encounter[] = [
+  {
+    id: "enc-omar-2",
+    person_id: "omar-al-mansouri",
+    met_at: "2026-09-30T18:30:00+04:00",
+    met_timezone: "Asia/Dubai",
+    place_name: "Dubai Marina",
+    city: "Dubai",
+    where_met_text: "coffee at the Marina",
+    note: "Now looking at Melbourne restaurants as an investment. Introduce to Tom Fitzgerald.",
+    transcript:
+      "Caught up with Omar over coffee at the Marina. He's looking at restaurants in Melbourne as an investment now, introduce him to Tom.",
+    duration_seconds: 12,
+  },
+  {
+    id: "enc-daniel-2",
+    person_id: "daniel-reyes",
+    met_at: "2025-11-19T20:00:00+07:00",
+    met_timezone: "Asia/Bangkok",
+    place_name: "Silom",
+    city: "Bangkok",
+    where_met_text: "Hannah's rooftop drinks in Silom",
+    note: "Opening a Bangkok office next year; wants cold-chain partners. Thanakorn could help.",
+    transcript: null,
+    duration_seconds: null,
+  },
+  {
+    id: "enc-priya-2",
+    person_id: "priya-raman",
+    met_at: "2026-10-04T19:55:00+04:00",
+    met_timezone: "Asia/Dubai",
+    place_name: "Alserkal Avenue",
+    city: "Dubai",
+    where_met_text: "Zayed's gallery night",
+    note: "Came along to the gallery night. Keen to meet Nok in Bangkok in November.",
+    transcript: null,
+    duration_seconds: null,
+  },
+];
+
+// Every meeting with a person, newest first.
+export function getMockMeetings(personId: string): Encounter[] {
+  const p = getMockPerson(personId);
+  if (!p) return [];
+  const first: Encounter = {
+    id: `enc-${p.id}-1`,
+    person_id: p.id,
+    met_at: p.met_at,
+    met_timezone: p.met_timezone,
+    place_name: p.place_name,
+    city: p.city,
+    where_met_text: p.where_met_text,
+    // The person's notes are shown separately on the profile.
+    note: null,
+    transcript: mockNotes[p.id]?.transcript ?? null,
+    duration_seconds: mockNotes[p.id]?.durationSeconds ?? null,
+  };
+  return [...mockLaterMeetings.filter((m) => m.person_id === personId), first].sort((a, b) =>
+    b.met_at.localeCompare(a.met_at),
+  );
+}

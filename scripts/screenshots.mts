@@ -164,6 +164,42 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: "31-ai-consent",
+    path: "/capture",
+    act: async (p) => {
+      await p.evaluate(() => localStorage.removeItem("peoplemap:ai-consent"));
+      await p.getByRole("button", { name: "Start recording" }).click();
+      await p.waitForTimeout(300);
+    },
+  },
+  { name: "32-profile-meetings-full", path: "/people/omar-al-mansouri", fullPage: true },
+  {
+    name: "33-met-again",
+    path: "/people/omar-al-mansouri",
+    act: async (p) => {
+      await p.getByRole("button", { name: "Met again" }).click();
+      await p.getByRole("textbox", { name: "Note about this meeting" }).scrollIntoViewIfNeeded();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "34-map-trip",
+    path: "/map",
+    act: async (p) => {
+      await p.getByRole("button", { name: "Trip" }).click();
+      await p.waitForTimeout(900);
+    },
+  },
+  {
+    name: "35-settings-connectors",
+    path: "/settings",
+    act: async (p) => {
+      await p.getByRole("switch").click();
+      await p.getByText("Connector link", { exact: true }).scrollIntoViewIfNeeded();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
     name: "28-ask-thread",
     path: "/ask",
     act: async (p) => {
@@ -206,6 +242,8 @@ for (const scheme of ["light", "dark"] as const) {
     hasTouch: true,
     colorScheme: scheme,
   });
+  // Skip the one-time AI consent sheet except in the shot that shows it.
+  await context.addInitScript(() => localStorage.setItem("peoplemap:ai-consent", "yes"));
   for (const shot of SHOTS) {
     if (scheme === "dark" && !DARK.has(shot.name)) continue;
     const page = await context.newPage();

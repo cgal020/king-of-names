@@ -82,6 +82,26 @@ The integration test creates two throwaway users, checks that neither can see
 or change the other's people, captures, profile or audio, then deletes them.
 Point it at the dev project, never production.
 
+## Claude and ChatGPT connector (MCP)
+
+`app/api/mcp/route.ts` is a read-only MCP server with four tools: `search_people`, `get_person`, `coming_up` and `people_near` (defined in `lib/mcp/people-tools.ts`). In development it serves the sample data without sign-in; in production it returns 404 until OAuth is wired up.
+
+Try it locally with Claude Code while `npm run dev` is running:
+
+```bash
+claude mcp add --transport http peoplemap-dev http://localhost:3000/api/mcp
+```
+
+Then ask Claude something like "Who are my investors in Dubai?". Claude.ai and ChatGPT need a public HTTPS URL with OAuth, so they can connect once the app is deployed with Supabase Auth's OAuth 2.1 server (see DECISIONS.md).
+
+## Screenshots for design reviews
+
+```bash
+npm run screenshots
+```
+
+Captures every screen and state at phone size, light and dark, into `docs/design-handoff/screens/`. Needs the dev server running and Google Chrome installed.
+
 ## Deployment
 
 Hosted on Vercel, functions in Singapore (`sin1`, set in `vercel.json`) next to

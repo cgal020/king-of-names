@@ -3,14 +3,15 @@ import { notFound } from "next/navigation";
 import { BellIcon, PhoneIcon } from "lucide-react";
 import { DeletePersonButton } from "@/components/delete-person-button";
 import { MiniMap } from "@/components/map/mini-map";
-import { OriginalNote } from "@/components/original-note";
+import { MeetingTimeline } from "@/components/meeting-timeline";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { PersonPhotos } from "@/components/photos/person-photos";
+import { SaveContactButton } from "@/components/save-contact-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
-import { getMockPerson, mockNotes } from "@/lib/mock/people";
+import { getMockMeetings, getMockPerson } from "@/lib/mock/people";
 import { cn } from "@/lib/utils";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
@@ -18,7 +19,8 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const p = getMockPerson(id);
   if (!p) notFound();
 
-  const note = mockNotes[p.id];
+  const meetings = getMockMeetings(p.id);
+  const latest = meetings[0];
   const birthday = formatBirthday(p.birthday_day, p.birthday_month, p.birthday_year);
   const work = [p.extras.role, p.extras.company].filter(Boolean).join(", ");
   const place = [p.place_name, p.city].filter(Boolean).join(", ");
@@ -49,18 +51,33 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         <h1 className="text-[2.5rem] leading-[1.1] font-semibold tracking-tight">{p.full_name}</h1>
         {work && <p className="mt-2 text-lg">{work}</p>}
         <p className="mt-1 text-[0.95rem] text-muted-foreground">
-          Met {formatMetDate(p.met_at, p.met_timezone)}
-          {place && <> &middot; {place}</>}
+          {meetings.length > 1 ? (
+            <>
+              Last met {formatMetDate(latest.met_at, latest.met_timezone)}
+              {latest.city && <> in {latest.city}</>} &middot; first met {formatMetDate(p.met_at, p.met_timezone)}
+            </>
+          ) : (
+            <>
+              Met {formatMetDate(p.met_at, p.met_timezone)}
+              {place && <> &middot; {place}</>}
+            </>
+          )}
         </p>
         <TagList relationship={p.relationship} tags={p.tags} className="mt-3" />
       </header>
 
-      {p.phone && (
-        <a href={`tel:${p.phone.replace(/[^\d+]/g, "")}`} className={cn(buttonVariants({ variant: "outline", size: "touch-lg" }), "mt-6 w-full justify-start")}>
-          <PhoneIcon aria-hidden className="text-primary" />
-          <span className="tabular-nums">{p.phone}</span>
-        </a>
-      )}
+      <div className="mt-6 grid gap-2">
+        {p.phone && (
+          <a
+            href={`tel:${p.phone.replace(/[^\d+]/g, "")}`}
+            className={cn(buttonVariants({ variant: "outline", size: "touch-lg" }), "w-full justify-start")}
+          >
+            <PhoneIcon aria-hidden className="text-primary" />
+            <span className="tabular-nums">{p.phone}</span>
+          </a>
+        )}
+        <SaveContactButton person={p} className="w-full" />
+      </div>
 
       {(p.follow_up_note || p.follow_up_date) && (
         <div className="mt-4 flex gap-3 rounded-2xl bg-primary/8 p-4">
@@ -120,12 +137,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </p>
       </section>
 
-      {note && (
-        <section className="mt-8">
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Your original note</h2>
-          <OriginalNote transcript={note.transcript} durationSeconds={note.durationSeconds} />
-        </section>
-      )}
+      <MeetingTimeline personId={p.id} initial={meetings} />
 
       <div className="mt-10">
         <DeletePersonButton name={p.full_name} />

@@ -2,15 +2,25 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ChevronLeftIcon, ChevronRightIcon, LocateFixedIcon, SettingsIcon, XIcon } from "lucide-react";
+import {
+  BellIcon,
+  CakeIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  LocateFixedIcon,
+  PlaneIcon,
+  SettingsIcon,
+  XIcon,
+} from "lucide-react";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { useAvatar } from "@/components/photos/photo-store";
 import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { distanceKm, formatDistance, formatMetDate } from "@/lib/format";
-import { mockCurrentLocation } from "@/lib/mock/people";
+import { getMockPerson, mockCurrentLocation, mockLaterMeetings } from "@/lib/mock/people";
 import { WORLD_LAND_PATH } from "@/lib/mock/world-path";
 import type { Person } from "@/lib/types";
+import { nextBirthday } from "@/lib/upcoming";
 import { cn } from "@/lib/utils";
 
 // Mockup map. The view is a centre and width in projected degrees
@@ -22,6 +32,7 @@ type Mode =
   | { kind: "cities" }
   | { kind: "city"; city: string }
   | { kind: "near"; radiusKm: number }
+  | { kind: "trip"; city: string; from: string; to: string }
   | { kind: "person"; id: string; from: Mode };
 
 const RADII = [1, 5, 25];
@@ -131,11 +142,30 @@ export function MapScreen({ people }: { people: Person[] }) {
     flyTo(homeView());
   }
 
-  function showCity(city: string) {
+  function flyToCity(city: string) {
     const entry = cities.find((c) => c.city === city);
-    setMode({ kind: "city", city });
     const pts = entry?.people.filter((p) => p.lat !== null && p.lng !== null) as { lat: number; lng: number }[];
     if (pts?.length) flyTo(fitView(pts, 0.25, aspect));
+  }
+
+  function showCity(city: string) {
+    setMode({ kind: "city", city });
+    flyToCity(city);
+  }
+
+  // Trip mode: who you know in a city you're heading to.
+  function showTrip(city: string, from: string, to: string) {
+    setMode({ kind: "trip", city, from, to });
+    flyToCity(city);
+  }
+
+  function startTrip() {
+    const day = (offset: number) => {
+      const d = new Date(Date.now() + offset * 86_400_000);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
+    const city = cities.find((c) => c.city !== mockCurrentLocation.city)?.city ?? cities[0].city;
+    showTrip(city, day(7), day(11));
   }
 
   function showNear(radiusKm: number) {
@@ -273,17 +303,30 @@ export function MapScreen({ people }: { people: Person[] }) {
         )}
 
         <div className="absolute top-3 right-3 left-3 flex justify-between gap-2 pt-[env(safe-area-inset-top)]">
-          <button
-            type="button"
-            onClick={() => showNear(mode.kind === "near" ? mode.radiusKm : 5)}
-            className={cn(
-              "flex h-11 items-center gap-2 rounded-full bg-background px-4 text-[0.95rem] font-medium shadow-md transition-colors",
-              mode.kind === "near" && "text-primary",
-            )}
-          >
-            <LocateFixedIcon className="size-4.5" aria-hidden />
-            Near me
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => showNear(mode.kind === "near" ? mode.radiusKm : 5)}
+              className={cn(
+                "flex h-11 items-center gap-2 rounded-full bg-background px-4 text-[0.95rem] font-medium shadow-md transition-colors",
+                mode.kind === "near" && "text-primary",
+              )}
+            >
+              <LocateFixedIcon className="size-4.5" aria-hidden />
+              Near me
+            </button>
+            <button
+              type="button"
+              onClick={startTrip}
+              className={cn(
+                "flex h-11 items-center gap-2 rounded-full bg-background px-4 text-[0.95rem] font-medium shadow-md transition-colors",
+                mode.kind === "trip" && "text-primary",
+              )}
+            >
+              <PlaneIcon className="size-4.5" aria-hidden />
+              Trip
+            </button>
+          </div>
           <Link
             href="/settings"
             aria-label="Settings"
@@ -310,6 +353,17 @@ export function MapScreen({ people }: { people: Person[] }) {
         )}
         {mode.kind === "near" && (
           <NearMe radiusKm={mode.radiusKm} results={nearby} onRadius={showNear} onBack={showCities} />
+        )}
+        {mode.kind === "trip" && (
+          <TripPanel
+            city={mode.city}
+            from={mode.from}
+            to={mode.to}
+            cities={cities}
+            onChange={showTrip}
+            onBack={showCities}
+            onSelect={showPerson}
+          />
         )}
         {mode.kind === "person" && (
           <PersonCard
@@ -435,6 +489,135 @@ function CityPeople({
                 <span className="size-3 rounded-full border-2 border-primary" />
               </button>
             )}
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
+function TripPanel({
+  city,
+  from,
+  to,
+  cities,
+  onChange,
+  onBack,
+  onSelect,
+}: {
+  city: string;
+  from: string;
+  to: string;
+  cities: CityEntry[];
+  onChange: (city: string, from: string, to: string) => void;
+  onBack: () => void;
+  onSelect: (id: string) => void;
+}) {
+  const entry = cities.find((c) => c.city === city);
+  const people = entry?.people ?? [];
+  const start = new Date(`${from}T00:00:00`);
+  const end = new Date(`${to}T23:59:59`);
+  const followUps = people.filter((p) => p.follow_up_note);
+  const birthdays = people.filter((p) => {
+    if (!p.birthday_month || !p.birthday_day) return false;
+    const next = nextBirthday(p.birthday_month, p.birthday_day, start);
+    return next !== null && next <= end;
+  });
+  // People recorded elsewhere whom you have also met in this city.
+  const alsoMetHere = mockLaterMeetings
+    .filter((m) => m.city === city && !people.some((p) => p.id === m.person_id))
+    .map((m) => ({ meeting: m, person: getMockPerson(m.person_id)! }));
+  const total = people.length + alsoMetHere.length;
+
+  return (
+    <>
+      <PanelHeader title={`Trip to ${city}`} onBack={onBack} />
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <select
+          aria-label="City"
+          value={city}
+          onChange={(e) => onChange(e.target.value, from, to)}
+          className="col-span-2 h-11 rounded-xl border border-input bg-background px-3 text-base"
+        >
+          {cities.map((c) => (
+            <option key={c.city} value={c.city}>
+              {c.city}, {c.country}
+            </option>
+          ))}
+        </select>
+        <input
+          type="date"
+          aria-label="Arriving"
+          value={from}
+          onChange={(e) => e.target.value && onChange(city, e.target.value, e.target.value > to ? e.target.value : to)}
+          className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+        />
+        <input
+          type="date"
+          aria-label="Leaving"
+          value={to}
+          min={from}
+          onChange={(e) => e.target.value && onChange(city, from, e.target.value)}
+          className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+        />
+      </div>
+
+      <p className="mt-4 text-[1.0625rem] leading-relaxed text-pretty">
+        You know {total === 1 ? "one person" : `${total} people`} in {city}.
+        {followUps.length > 0 &&
+          ` ${followUps.length === 1 ? "One follow-up is" : `${followUps.length} follow-ups are`} open.`}
+        {birthdays.length > 0
+          ? ` ${birthdays.map((p) => p.full_name.split(" ")[0]).join(" and ")} ${birthdays.length === 1 ? "has a birthday" : "have birthdays"} while you're there.`
+          : " No birthdays while you're there."}
+      </p>
+
+      <ul className="mt-3 divide-y border-y">
+        {people.map((p) => (
+          <li key={p.id} className="flex items-center gap-2">
+            <Link href={`/people/${p.id}`} className="flex min-w-0 flex-1 items-center gap-3 py-3">
+              <PersonAvatar personId={p.id} name={p.full_name} size={40} />
+              <span className="min-w-0">
+                <span className="block truncate text-[1.0625rem] font-semibold tracking-tight">{p.full_name}</span>
+                <span className="flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+                  {p.follow_up_note ? (
+                    <>
+                      <BellIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
+                      {p.follow_up_note}
+                    </>
+                  ) : birthdays.includes(p) ? (
+                    <>
+                      <CakeIcon className="size-3.5 shrink-0 text-primary" aria-hidden />
+                      Birthday while you&rsquo;re there
+                    </>
+                  ) : (
+                    [p.tags.join(", "), formatMetDate(p.met_at, p.met_timezone)].filter(Boolean).join(" · ")
+                  )}
+                </span>
+              </span>
+            </Link>
+            {p.lat !== null && (
+              <button
+                type="button"
+                onClick={() => onSelect(p.id)}
+                aria-label={`Show ${p.full_name} on the map`}
+                className="grid size-11 shrink-0 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
+              >
+                <span className="size-3 rounded-full border-2 border-primary" />
+              </button>
+            )}
+          </li>
+        ))}
+        {alsoMetHere.map(({ meeting, person: p }) => (
+          <li key={meeting.id}>
+            <Link href={`/people/${p.id}`} className="flex items-center gap-3 py-3">
+              <PersonAvatar personId={p.id} name={p.full_name} size={40} />
+              <span className="min-w-0">
+                <span className="block truncate text-[1.0625rem] font-semibold tracking-tight">{p.full_name}</span>
+                <span className="block truncate text-sm text-muted-foreground">
+                  Also met here {formatMetDate(meeting.met_at, meeting.met_timezone)} &middot; based in {p.city}
+                </span>
+              </span>
+            </Link>
           </li>
         ))}
       </ul>

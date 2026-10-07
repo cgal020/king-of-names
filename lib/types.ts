@@ -66,3 +66,18 @@ export type Photo = {
   // Reverse-geocoded label for display, e.g. "Dubai Marina, Dubai".
   place_label: string | null;
 };
+
+// One meeting with a person. In the real app each confirmed capture is a
+// meeting; the person's first meeting is when they were added.
+export type Encounter = {
+  id: string;
+  person_id: string;
+  met_at: string;
+  met_timezone: string | null;
+  place_name: string | null;
+  city: string | null;
+  where_met_text: string | null;
+  note: string | null;
+  transcript: string | null;
+  duration_seconds: number | null;
+};

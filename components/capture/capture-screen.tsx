@@ -13,6 +13,7 @@ import {
   ScanLineIcon,
   SettingsIcon,
 } from "lucide-react";
+import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
 import { RecordButton } from "@/components/capture/record-button";
 import { usePhotoPicker } from "@/components/photos/photo-picker";
 import { usePhotosFor } from "@/components/photos/photo-store";
@@ -35,6 +36,7 @@ type LocationState = "idle" | "locating" | "found" | "unavailable";
 export function CaptureScreen() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
+  const [askingConsent, setAskingConsent] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(0);
   const [location, setLocation] = useState<LocationState>("idle");
@@ -70,12 +72,18 @@ export function CaptureScreen() {
     return () => window.clearTimeout(id);
   }, [phase, step, router]);
 
+  function startRecording() {
+    startedAt.current = Date.now();
+    setElapsed(0);
+    setLocation("locating");
+    setPhase("recording");
+  }
+
   function handlePress() {
     if (phase === "idle") {
-      startedAt.current = Date.now();
-      setElapsed(0);
-      setLocation("locating");
-      setPhase("recording");
+      // The first recording asks for consent to send notes to the AI providers.
+      if (hasAiConsent()) startRecording();
+      else setAskingConsent(true);
     } else if (phase === "recording") {
       setLevel(0);
       setStep(0);
@@ -165,6 +173,15 @@ export function CaptureScreen() {
           )}
         </div>
       </section>
+      {askingConsent && (
+        <AiConsentSheet
+          onCancel={() => setAskingConsent(false)}
+          onAgree={() => {
+            setAskingConsent(false);
+            startRecording();
+          }}
+        />
+      )}
     </main>
   );
 }

@@ -1,6 +1,6 @@
 # Design handoff: PeopleMap UI/UX
 
-For: Claude Design. From: the build team (Clockworke Digital), 7 October 2026.
+For: Claude Design. From: the build team (Clockworke Digital). Updated 7 October 2026.
 Attach the `screens/` folder next to this file; every screen below has a screenshot there.
 
 ## 1. What we need from you
@@ -84,6 +84,12 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 24 | People, tag filter | `27-people-tag-filter` | Type and Tag filter chips; here filtered to Investor. |
 | 25 | Card QR that is only a link | `29-card-link-only` | Most digital cards (Blinq, Popl, HiHello…) put only a profile link in the QR. The sheet saves the link and offers "Photograph the card" to get the details. |
 | 26 | Permission for a photo of a person | `30-photo-permission` | Choosing "Them" asks "Do you have their permission?" before the camera opens; card and place photos skip this. |
+| 27 | AI consent | `31-ai-consent` | Shown once, before the first recording: what goes to OpenAI, Anthropic and Mapbox, where data is stored, Not now / I agree. |
+| 28 | Profile with meetings | `32-profile-meetings-full` | "Last met … · first met …" in the header, Save to contacts under Call, and a "Met 2 times" timeline at the bottom (newest first, with recordings). |
+| 29 | Met again | `33-met-again` | "Met again" opens an inline note (type or record) stamped with now and the current place. |
+| 30 | People, Coming up | `07-people` | A Coming up box above the list: follow-ups (overdue first) and birthdays in the next six weeks. |
+| 31 | Map, trip mode | `34-map-trip` | "Trip" picks a city and dates; the map flies there and the panel says who you know, open follow-ups, birthdays during the trip, and people you also met there. |
+| 32 | Settings, Claude and ChatGPT | `35-settings-connectors` | Off-by-default switch, connector link with copy, setup steps for Claude and ChatGPT, what's shared, connected assistants. Settings also gained My card (your own QR) and Import contacts. |
 
 Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
@@ -168,7 +174,20 @@ How it works now:
 
 Please design: the tag editor on Review (it must stay a glance, not a form), the tag display on profile, list rows (should rows show tags?), map pins or filters by tag, and tag management in Settings (rename, merge, delete).
 
-### 7.5 What the market research changes for design
+### 7.5 Recommended features, now in the mockup
+
+- **Save to contacts** on every profile: a contact file with a "Met at … on …" note, their photo and tags. iPhone shows "scroll down and tap Create New Contact" because tapping Done discards it.
+- **Met again**: every meeting with a person on a timeline; recording from a profile adds a meeting instead of overwriting notes (screens 28, 29).
+- **Coming up** on People: birthdays and follow-ups, overdue first. This is also the fallback for push reminders, which iOS only delivers to installed apps (screen 30).
+- **Trip mode** on the Map (screen 31).
+- **My card**: your own QR in Settings; the details sit in the code, so it scans without internet.
+- **Import contacts** from a .vcf file or, on Android, the phone's contact picker, with a preview first.
+- **AI consent** before the first recording (screen 27) and a **privacy pledge** in Settings.
+- **Claude and ChatGPT connector** (screen 32): people can ask the assistant they already use about their own contacts. Read only, off by default.
+
+Please design: the timeline (does it belong higher on the profile?), Coming up (is the People tab the right home, or the Capture screen?), the trip panel, the contact-import preview, the consent sheet, and the connector settings, including a "connected assistants" list with disconnect.
+
+### 7.6 What the market research changes for design
 
 The October 2026 market research (256 sources; full report at `docs/research/market-research-2026-10.md`) compared 30+ personal CRMs, card apps, voice tools and "where we met" apps, and the privacy rules in the UAE, Australia and Thailand. What matters for design:
 
@@ -214,7 +233,7 @@ Please return token changes as a table like the one above (OKLCH preferred) so t
 
 ## 10. Out of scope (don't design)
 
-Push notifications and reminders, vCard "save to contacts" export, WhatsApp voice-note intake, native App Store / Play Store apps, sharing contacts between users, team features, billing. Keep layouts flexible enough that a reminders badge, a "save to contacts" action and a WhatsApp source label could be added later.
+Push notifications (the in-app Coming up list stands in for now), WhatsApp or Telegram voice-note intake, native App Store / Play Store apps, sharing contacts between users, team features, billing. Keep layouts flexible enough that a reminders badge and a WhatsApp source label could be added later.
 
 ## 11. Where things live in code (for our implementation)
 
@@ -232,6 +251,9 @@ Push notifications and reminders, vCard "save to contacts" export, WhatsApp voic
 | Card scanner | `components/capture/card-scanner.tsx`, `lib/cards/*` |
 | Ask AI | `components/ask/*`, `app/(app)/ask/page.tsx` |
 | Tags | `components/tags/tag-editor.tsx`, `lib/tags.ts` |
+| Meetings, Coming up, trip | `components/meeting-timeline.tsx`, `components/coming-up.tsx`, `components/map/map-screen.tsx`, `lib/upcoming.ts` |
+| Contacts (save, import, my card) | `components/save-contact-button.tsx`, `components/settings/*`, `lib/contacts/*` |
+| Claude / ChatGPT connector | `app/api/mcp/route.ts`, `lib/mcp/people-tools.ts` |
 | Base components | `components/ui/*` (shadcn base-nova) |
 | Product context | `PRODUCT.md` |
 

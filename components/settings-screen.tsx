@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDownIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
+import { AiConnectors } from "@/components/settings/ai-connectors";
+import { ImportContacts } from "@/components/settings/import-contacts";
+import { MyCard } from "@/components/settings/my-card";
 import { Button } from "@/components/ui/button";
 import { appConfig } from "@/lib/config";
 import { mockPeople } from "@/lib/mock/people";
@@ -47,6 +50,35 @@ export function SettingsScreen() {
           <Row label="Name" value="Cameron Gallagher" />
           <Row label="Email" value="cameron@example.com" />
         </dl>
+      </Section>
+
+      <Section
+        title="My card"
+        description="Let people scan you. Your details sit inside the code, so it works without internet."
+      >
+        <MyCard
+          initial={{
+            full_name: "Cameron Gallagher",
+            company: "",
+            role: "",
+            phone: "",
+            email: "cameron@example.com",
+          }}
+        />
+      </Section>
+
+      <Section
+        title="Import contacts"
+        description="Start with people you already know. You'll see a preview before anything is added."
+      >
+        <ImportContacts />
+      </Section>
+
+      <Section
+        title="Claude and ChatGPT"
+        description="Connect your people to the AI assistant you already use."
+      >
+        <AiConnectors />
       </Section>
 
       <Section
@@ -165,6 +197,12 @@ export function SettingsScreen() {
             these providers.
           </p>
           <p>You can export everything or delete your account at any time.</p>
+          <ul className="list-disc space-y-1 pl-5 text-foreground marker:text-primary">
+            <li>Your notes are never used to train AI.</li>
+            <li>No enrichment: we never look people up on LinkedIn, the web or data brokers.</li>
+            <li>No face recognition, ever.</li>
+            <li>Only you can see your people. Invited accounts are completely separate.</li>
+          </ul>
         </div>
       </Section>
 

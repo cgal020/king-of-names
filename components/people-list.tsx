@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDownIcon, MicIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useAskStore } from "@/components/ask/ask-store";
+import { ComingUp } from "@/components/coming-up";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { looksLikeQuestion } from "@/lib/ask/question";
@@ -156,6 +157,7 @@ export function PeopleList({ people }: { people: Person[] }) {
       </div>
 
       {isQuestion && <AskRow question={query} onAsk={askAi} />}
+      {!filtered && <ComingUp people={people} />}
 
       <p className="sr-only" aria-live="polite">
         {results.length} {results.length === 1 ? "person" : "people"}
