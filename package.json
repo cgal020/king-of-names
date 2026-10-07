@@ -12,9 +12,11 @@
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "invite:create": "node --env-file=.env.local scripts/create-invite.mts",
-    "screenshots": "node scripts/screenshots.mts"
+    "screenshots": "node scripts/screenshots.mts",
+    "eval:extraction": "vitest run --config vitest.eval.config.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@base-ui/react": "^1.8.0",
     "@modelcontextprotocol/server": "^2.3.1",
     "@supabase/ssr": "^0.12.7",
@@ -25,6 +27,7 @@
     "lucide-react": "^1.52.0",
     "mcp-handler": "^2.2.0",
     "next": "16.3.8",
+    "openai": "^7.30.0",
     "qrcode": "^1.5.4",
     "react": "19.2.8",
     "react-dom": "19.2.8",

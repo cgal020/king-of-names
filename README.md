@@ -37,9 +37,10 @@ phone, use a Vercel preview deployment.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | browser and server | The publishable key (`sb_publishable_...`) or legacy anon key. Safe to expose; row level security protects the data |
 | `SUPABASE_SERVICE_ROLE_KEY` | server only | The secret key (`sb_secret_...`) or legacy service_role key. Bypasses row level security; used only for invite codes, username login and account deletion |
 | `OPENAI_API_KEY` | server only | Transcription |
-| `TRANSCRIPTION_MODEL` | server only | OpenAI transcription model ID |
+| `TRANSCRIPTION_MODEL` | server only | OpenAI transcription model ID; `gpt-transcribe` recommended |
+| `TRANSCRIPTION_LANGUAGES` | server only | Comma-separated languages notes are spoken in, default `en` |
 | `ANTHROPIC_API_KEY` | server only | Field extraction |
-| `EXTRACTION_MODEL` | server only | Anthropic model ID |
+| `EXTRACTION_MODEL` | server only | Anthropic model ID for extraction and card reading; `claude-haiku-4-5` recommended |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard |
 | `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding. Needs a card on the Mapbox account because results are stored (`permanent=true`) |
 | `NEXT_PUBLIC_APP_NAME` | browser and server | Display name, defaults to PeopleMap |
@@ -76,6 +77,7 @@ npm run lint
 npm run typecheck
 npm test                  # unit tests, offline
 npm run test:integration  # row level security test against the Supabase project in .env.local
+npm run eval:extraction   # 13 sample notes through the real extraction model (costs a few cents)
 ```
 
 The integration test creates two throwaway users, checks that neither can see
