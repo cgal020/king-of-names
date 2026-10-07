@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ServiceWorker } from "@/components/service-worker";
 import { appConfig } from "@/lib/config";
 import "./globals.css";
 
@@ -6,6 +7,9 @@ export const metadata: Metadata = {
   title: appConfig.name,
   description: appConfig.description,
   applicationName: appConfig.name,
+  // Home Screen app on iPhone: full screen, with the name under the icon.
+  appleWebApp: { capable: true, title: appConfig.shortName, statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
@@ -31,7 +35,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <style>{brandCss}</style>
       </head>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        {children}
+        <ServiceWorker />
+      </body>
     </html>
   );
 }

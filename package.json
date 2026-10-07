@@ -13,7 +13,9 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "invite:create": "node --env-file=.env.local scripts/create-invite.mts",
     "screenshots": "node scripts/screenshots.mts",
-    "eval:extraction": "vitest run --config vitest.eval.config.ts"
+    "eval:extraction": "vitest run --config vitest.eval.config.ts",
+    "icons": "node scripts/build-icons.mts",
+    "check:pwa": "node scripts/check-pwa.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

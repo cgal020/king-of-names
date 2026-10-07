@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CircleAlertIcon, PlusIcon, ScanTextIcon, UsersIcon } from "lucide-react";
 import { useCardResult } from "@/components/capture/card-store";
+import { useRecording } from "@/components/capture/recording-store";
 import { ConfirmButton } from "@/components/confirm-button";
 import { MiniMap } from "@/components/map/mini-map";
 import { OriginalNote } from "@/components/original-note";
@@ -88,6 +89,8 @@ export function PersonForm({
   const photos = usePhotosFor(photoTarget);
   const { attachDraft } = usePhotos();
   const { result: card, setResult: setCard } = useCardResult();
+  // The note just recorded on this phone, so review plays back the real audio.
+  const { recording } = useRecording();
   // Details from a scanned business card are merged into the draft once.
   const [merged] = useState(() =>
     mode === "review" && card ? mergeCard(initial, card.details, nameConfidence) : null,
@@ -500,7 +503,11 @@ export function PersonForm({
         {mode === "review" && (transcript || durationSeconds) && (
           <div>
             <h2 className="mb-2 text-sm font-medium text-muted-foreground">Your note</h2>
-            <OriginalNote transcript={transcript ?? null} durationSeconds={durationSeconds ?? null} />
+            <OriginalNote
+              transcript={transcript ?? null}
+              durationSeconds={recording ? recording.durationSeconds : (durationSeconds ?? null)}
+              src={recording?.url}
+            />
           </div>
         )}
       </div>

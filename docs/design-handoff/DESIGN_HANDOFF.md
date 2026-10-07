@@ -90,6 +90,10 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 30 | People, Coming up | `07-people` | A Coming up box above the list: follow-ups (overdue first) and birthdays in the next six weeks. |
 | 31 | Map, trip mode | `34-map-trip` | "Trip" picks a city and dates; the map flies there and the panel says who you know, open follow-ups, birthdays during the trip, and people you also met there. |
 | 32 | Settings, Claude and ChatGPT | `35-settings-connectors` | Off-by-default switch, connector link with copy, setup steps for Claude and ChatGPT, what's shared, connected assistants. Settings also gained My card (your own QR) and Import contacts. |
+| 33 | Install prompt (iPhone) | `36-install-prompt-iphone` | A one-line prompt at the top of Capture in phone browsers: "Add PeopleMap to your Home Screen", with How and a close button. Hidden on desktop and once installed. |
+| 34 | Install steps (iPhone) | `37-install-steps-iphone`, `-dark` | "How" opens an instruction sheet: Share (or ⋯ first in newer Safari), Add to Home Screen, keep "Open as Web App" on. Android shows Chrome's install prompt when it's offered, otherwise the menu steps. |
+| 35 | Waiting to send | `38-capture-waiting-to-send` | A note recorded with no signal (or when the upload fails) stays on the phone: toast "Saved on your phone" and a dashed "1 note waiting to send" strip with Send now. Sends by itself once back online. |
+| 36 | Offline page | `39-offline-page` | Any page other than Capture opened without a connection: "You're offline", you can still record, "Record a note". |
 
 Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
@@ -111,9 +115,7 @@ Photos also appear on the Capture screen (Card and Photo buttons beside the reco
 Please design these; they are in scope for the MVP.
 
 - **Sign in** (username or email + password), **sign up** (invite code, email, username, password), **password reset**, and a signed-out landing.
-- **First-run install prompt**: on iPhone a step-by-step instruction screen (Safari → Share → Add to Home Screen), since iOS has no install prompt; on Android the native prompt plus fallback steps.
 - **Permissions**: microphone denied, location denied (capture still works; city set on review), camera denied.
-- **Offline / failed upload**: a recording kept on the phone shows as "Waiting to send" and retries when back online.
 - **Pipeline failures**: transcription failed (keep the audio, offer retry, allow manual entry); extraction failed (show the transcript so the user can fill in by hand).
 - **Empty states**: no people yet, no results, no one near you, city with no pins.
 - **Rate limit** reached (60 captures per hour).
@@ -202,6 +204,12 @@ The October 2026 market research (256 sources; full report at `docs/research/mar
 - **iPhone install coach.** Tie "Add to Home Screen" to what it unlocks (reminders, offline notes), since iOS has no install prompt.
 - **Likely next features** (recommended, not yet approved): "Save to phone contacts" with a "met at … on …" note; birthday and follow-up reminders with an in-app fallback; a trip mode showing who you know in the city you're heading to. Leave room for them.
 - **Avoid:** face recognition or grouping, contact enrichment, "overdue" scores or pipeline language, and bulk messaging.
+
+### 7.7 Installable app and offline (built for real)
+
+The install prompt, the iPhone instruction screen, "waiting to send" and the offline page are built for real, not mocked (screens 33 to 36). The app also has a Home Screen icon (`public/icons/`, from `scripts/build-icons.mts`) and long-press shortcuts: Record a note, Scan a card, Ask.
+
+Please design: the app icon (ours is a placeholder pin on green), the install prompt and steps (an illustration of Safari's Share button would help most people), the waiting-to-send strip and its sending state, and the offline page. Keep the record button in view on a 659 px tall iPhone screen with Safari's toolbars: today the Capture heading tightens on short screens to make room.
 
 ## 8. Content and voice
 

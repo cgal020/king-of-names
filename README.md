@@ -78,6 +78,14 @@ npm run typecheck
 npm test                  # unit tests, offline
 npm run test:integration  # row level security test against the Supabase project in .env.local
 npm run eval:extraction   # 13 sample notes through the real extraction model (costs a few cents)
+npm run check:pwa         # recording, offline queue, shortcut, manifest and install help in Chrome (dev server running)
+```
+
+To include the service worker, check a production build:
+
+```bash
+npm run build && npm start -- -p 3100
+PWA_BASE_URL=http://localhost:3100 npm run check:pwa -- --prod
 ```
 
 The integration test creates two throwaway users, checks that neither can see
@@ -95,6 +103,13 @@ claude mcp add --transport http peoplemap-dev http://localhost:3000/api/mcp
 ```
 
 Then ask Claude something like "Who are my investors in Dubai?". Claude.ai and ChatGPT need a public HTTPS URL with OAuth, so they can connect once the app is deployed with Supabase Auth's OAuth 2.1 server (see DECISIONS.md).
+
+## Installable app and offline
+
+- `app/manifest.ts` is the web app manifest. Icons are generated, not hand-made: edit the design in `scripts/build-icons.mts` and run `npm run icons`.
+- `public/sw.js` is the service worker. It registers in production builds only and keeps just the Capture screen and the offline page, so the app opens without a connection. Change `VERSION` in it when its caching rules change.
+- Notes recorded without a connection wait in IndexedDB (`lib/offline/queue.ts`) and are sent when the app is next online.
+- The service worker only runs over HTTPS or on `localhost`, so test installing on a phone with a Vercel preview deployment.
 
 ## Screenshots for design reviews
 

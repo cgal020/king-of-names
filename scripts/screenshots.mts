@@ -2,12 +2,21 @@
 // design reviews. Needs the dev server running and Google Chrome installed.
 // Run with: npm run screenshots
 import { mkdir } from "node:fs/promises";
-import { chromium, type Page } from "@playwright/test";
+import { chromium, devices, type Page } from "@playwright/test";
 
 const BASE = process.env.SCREENSHOT_BASE_URL ?? "http://localhost:3000";
 const OUT = "docs/design-handoff/screens";
 
-type Shot = { name: string; path: string; fullPage?: boolean; act?: (page: Page) => Promise<void> };
+type Shot = {
+  name: string;
+  path: string;
+  fullPage?: boolean;
+  act?: (page: Page) => Promise<void>;
+  // Shots that change the browser (an iPhone, offline) get a context of their own.
+  isolated?: { userAgent?: string; offline?: boolean };
+};
+
+const IPHONE = devices["iPhone 15"].userAgent;
 
 const SHOTS: Shot[] = [
   { name: "01-capture", path: "/capture" },
@@ -217,6 +226,28 @@ const SHOTS: Shot[] = [
       await p.waitForTimeout(1300);
     },
   },
+  { name: "36-install-prompt-iphone", path: "/capture", isolated: { userAgent: IPHONE } },
+  {
+    name: "37-install-steps-iphone",
+    path: "/capture",
+    isolated: { userAgent: IPHONE },
+    act: async (p) => {
+      await p.getByRole("button", { name: "How" }).click();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "38-capture-waiting-to-send",
+    path: "/capture",
+    isolated: { offline: true },
+    act: async (p) => {
+      await p.getByRole("button", { name: "Start recording" }).click();
+      await p.waitForTimeout(1200);
+      await p.getByRole("button", { name: "Stop recording" }).click();
+      await p.getByText("1 note waiting to send").waitFor();
+    },
+  },
+  { name: "39-offline-page", path: "/offline" },
 ];
 
 const DARK = new Set([
@@ -229,33 +260,48 @@ const DARK = new Set([
   "14-map-city",
   "19-card-result-qr",
   "25-ask-answer",
+  "37-install-steps-iphone",
 ]);
 
 await mkdir(OUT, { recursive: true });
-const browser = await chromium.launch({ channel: "chrome" });
+// A simulated microphone, so recording shots show a real recording.
+const browser = await chromium.launch({
+  channel: "chrome",
+  args: ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream"],
+});
 
-for (const scheme of ["light", "dark"] as const) {
+async function newContext(scheme: "light" | "dark", userAgent?: string) {
   const context = await browser.newContext({
     viewport: { width: 390, height: 844 },
     deviceScaleFactor: 2,
     isMobile: true,
     hasTouch: true,
     colorScheme: scheme,
+    permissions: ["microphone"],
+    userAgent,
   });
   // Skip the one-time AI consent sheet except in the shot that shows it.
   await context.addInitScript(() => localStorage.setItem("peoplemap:ai-consent", "yes"));
+  return context;
+}
+
+for (const scheme of ["light", "dark"] as const) {
+  const shared = await newContext(scheme);
   for (const shot of SHOTS) {
     if (scheme === "dark" && !DARK.has(shot.name)) continue;
+    const context = shot.isolated ? await newContext(scheme, shot.isolated.userAgent) : shared;
     const page = await context.newPage();
     await page.goto(BASE + shot.path, { waitUntil: "networkidle" });
+    if (shot.isolated?.offline) await context.setOffline(true);
     await page.waitForTimeout(500);
     await shot.act?.(page);
     const file = `${OUT}/${shot.name}${scheme === "dark" ? "-dark" : ""}.png`;
     await page.screenshot({ path: file, fullPage: shot.fullPage ?? false });
     console.log(file);
     await page.close();
+    if (context !== shared) await context.close();
   }
-  await context.close();
+  await shared.close();
 }
 
 await browser.close();

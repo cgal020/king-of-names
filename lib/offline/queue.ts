@@ -1,0 +1,98 @@
+// Recordings that couldn't be sent wait here and are retried when the app is
+// opened, comes back online or becomes visible again. iOS has no Background
+// Sync, so there is no retry while the app is closed.
+
+export type QueuedCapture = {
+  id: string;
+  audio: Blob;
+  mime: string;
+  durationSeconds: number;
+  recordedAt: string;
+  timezone: string | null;
+  location: { lat: number; lng: number; accuracyM: number | null } | null;
+  attempts: number;
+  lastError: string | null;
+};
+
+export type QueueStore = {
+  put: (item: QueuedCapture) => Promise<void>;
+  all: () => Promise<QueuedCapture[]>;
+  remove: (id: string) => Promise<void>;
+};
+
+type FlushResult = { sent: number; waiting: number };
+const running = new WeakMap<QueueStore, Promise<FlushResult>>();
+
+// Sends every waiting recording, oldest first. A failure keeps the recording
+// and stops the run, since the rest would most likely fail the same way.
+// Runs one at a time per store: "online" and "visibilitychange" can fire
+// together, and two overlapping runs would upload the same recording twice.
+export function flushQueue(store: QueueStore, upload: (item: QueuedCapture) => Promise<void>): Promise<FlushResult> {
+  const previous = running.get(store);
+  const next = (previous ? previous.catch(() => null) : Promise.resolve()).then(() => flushOnce(store, upload));
+  running.set(store, next);
+  return next;
+}
+
+async function flushOnce(store: QueueStore, upload: (item: QueuedCapture) => Promise<void>): Promise<FlushResult> {
+  const items = (await store.all()).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+  let sent = 0;
+  for (const item of items) {
+    try {
+      await upload(item);
+      await store.remove(item.id);
+      sent += 1;
+    } catch (error) {
+      await store.put({ ...item, attempts: item.attempts + 1, lastError: error instanceof Error ? error.name : "Error" });
+      return { sent, waiting: items.length - sent };
+    }
+  }
+  return { sent, waiting: 0 };
+}
+
+export function memoryStore(): QueueStore {
+  const items = new Map<string, QueuedCapture>();
+  return {
+    put: async (item) => void items.set(item.id, item),
+    all: async () => [...items.values()],
+    remove: async (id) => void items.delete(id),
+  };
+}
+
+const DB = "peoplemap";
+const STORE = "capture-queue";
+
+function open(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: "id" });
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+  return open().then(
+    (db) =>
+      new Promise<T>((resolve, reject) => {
+        const tx = db.transaction(STORE, mode);
+        const request = action(tx.objectStore(STORE));
+        tx.oncomplete = () => {
+          db.close();
+          resolve(request.result);
+        };
+        tx.onerror = () => reject(tx.error);
+      }),
+  );
+}
+
+// Browser IndexedDB store. Asks the browser to keep it through storage
+// pressure so a waiting recording isn't evicted.
+export function indexedDbStore(): QueueStore {
+  void navigator.storage?.persist?.().catch(() => false);
+  return {
+    put: (item) => run("readwrite", (s) => s.put(item)).then(() => undefined),
+    all: () => run("readonly", (s) => s.getAll() as IDBRequest<QueuedCapture[]>),
+    remove: (id) => run("readwrite", (s) => s.delete(id)).then(() => undefined),
+  };
+}
