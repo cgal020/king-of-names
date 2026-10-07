@@ -43,7 +43,7 @@ A private "people memory" app for a company owner (Cameron) who meets hundreds o
 From the client brief; please design within these or flag clearly if you think one should change.
 
 - Mobile-first at 390 px wide, must still be usable on desktop (currently a centred column, max ~576 px).
-- **Bottom tab bar with three tabs: Capture, People, Map.** Settings sits behind an icon.
+- **Bottom tab bar with four tabs: Capture, People, Ask, Map.** (The brief had three; Ask was added on 7 Oct so Ask AI is one tap from anywhere.) Settings sits behind an icon.
 - One accent colour. App name and accent are placeholders ("PeopleMap", muted green) and must stay changeable in one config file, so don't bake the name into artwork.
 - Light and dark mode follow the system; no toggle.
 - Skeletons, not spinners, where content is loading.
@@ -77,9 +77,9 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 17 | Card result | `19-card-result-qr`, `-dark` | Bottom sheet listing what was read (name, company, role, phone, email, LinkedIn, birthday) and where it came from ("Read from the QR code" or "Read from the card"); Scan again / Add to note. |
 | 18 | Review after a card | `20-review-from-card-full` | The card photo sits in Photos; fields that came from the card carry a small "From card" label. |
 | 19 | Photo viewer | `21-photo-viewer` | Full-screen, dark; place, time and location source ("from phone GPS", "from the photo", or "No location saved in this photo"); Them / Card / Place switch; delete; previous / next. |
-| 20 | Ask AI, suggestions | `22-ask-suggestions` | Focusing the search box offers suggested questions; a mic asks by voice. |
-| 21 | Ask AI, typed question | `23-ask-typed` | When the text reads like a question, an "Ask AI" row appears above results. |
-| 22 | Ask AI, thinking / answer | `24-ask-thinking`, `25-ask-answer`, `-dark`, `28-ask-investors` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line), follow-up questions and a note that answers come only from your own notes. |
+| 20 | **Ask** tab | `22-ask-tab` | Its own tab. Heading "What do you want to know about your people?", suggested questions, and a question box pinned above the tab bar with a mic and a send button. |
+| 21 | People, question typed | `23-people-question-row` | When search text reads like a question, an "Ask AI" row appears above results and opens the Ask tab with that question. |
+| 22 | Ask, thinking / answer / thread | `24-ask-thinking`, `25-ask-answer`, `-dark`, `28-ask-thread` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line) and follow-up questions; further questions stack into a thread; Clear empties it. |
 | 23 | Tags on Review | `26-review-tags` | Relationship (Business / Personal / Both) and "How they could help" chips, marked "Suggested" when the AI chose them. |
 | 24 | People, tag filter | `27-people-tag-filter` | Type and Tag filter chips; here filtered to Investor. |
 
@@ -141,16 +141,16 @@ Please design: the scanner (frame, detection feedback, the moment a QR is found,
 
 ### 7.3 Ask AI
 
-Ask questions in plain language about your own people, typed or spoken, from the People search box:
+Ask questions in plain language about your own people, typed or spoken, on the **Ask tab**:
 
 - "Who did I meet in Dubai who works in shipping?"
 - "Whose birthday is this month?"
 - "What did I note about Omar?"
 - "Who should I see while I'm in Bangkok?"
 
-How it works now: suggested questions when the search box is focused; an "Ask AI" row appears when the text reads like a question; a mic asks by voice; a skeleton while thinking; then a short answer, the people it used as tappable rows with a reason line, follow-up questions, and a line saying answers come only from your own notes. It says plainly when nothing matches and never invents people.
+How it works now: the Ask tab opens on suggested questions and a question box pinned above the tab bar (typing, or the mic for voice). Each answer shows a skeleton while thinking, then a short answer, the people it used as tappable rows with a reason line, and follow-up questions; answers stack into a thread with a Clear button. Typing a question into People search offers an "Ask AI" row that carries it to the Ask tab. It says plainly when nothing matches and never invents people.
 
-Please design: the entry (is the search box enough, or does it need a more visible door without a fourth tab?), the voice-question state, the answer layout, no-results and error states, and how a long answer with many people stays scannable.
+Please design: the Ask tab's empty state, the voice-question state, the answer layout and thread, no-results and error states, how a long answer with many people stays scannable, and the Ask icon in the tab bar.
 
 ### 7.4 Tags: relationship and how they could help
 
@@ -212,7 +212,7 @@ Push notifications and reminders, vCard "save to contacts" export, WhatsApp voic
 | Settings | `components/settings-screen.tsx` |
 | Photos | `components/photos/*` (strip, viewer, picker, avatar) |
 | Card scanner | `components/capture/card-scanner.tsx`, `lib/cards/*` |
-| Ask AI | `components/ask-panel.tsx`, `components/people-list.tsx` |
+| Ask AI | `components/ask/*`, `app/(app)/ask/page.tsx` |
 | Tags | `components/tags/tag-editor.tsx`, `lib/tags.ts` |
 | Base components | `components/ui/*` (shadcn base-nova) |
 | Product context | `PRODUCT.md` |

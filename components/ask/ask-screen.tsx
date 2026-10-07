@@ -1,0 +1,132 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { ArrowUpIcon, MicIcon, SparklesIcon } from "lucide-react";
+import { AskAnswer } from "@/components/ask/ask-answer";
+import { useAskStore } from "@/components/ask/ask-store";
+import { ScreenHeader } from "@/components/screen-header";
+import { Button } from "@/components/ui/button";
+import { SUGGESTED_QUESTIONS } from "@/lib/ask/question";
+import type { Person } from "@/lib/types";
+import { cn } from "@/lib/utils";
+
+type Entry = { id: number; question: string };
+
+export function AskScreen({ people }: { people: Person[] }) {
+  const { pending, setPending } = useAskStore();
+  // A question handed over from People search starts the thread.
+  const [entries, setEntries] = useState<Entry[]>(() => (pending ? [{ id: 1, question: pending }] : []));
+  const [text, setText] = useState("");
+  const [listening, setListening] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
+  const nextId = useRef(entries.length + 1);
+
+  useEffect(() => {
+    if (pending) setPending(null);
+  }, [pending, setPending]);
+
+  // Keep the newest answer in view.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [entries.length]);
+
+  // Mockup voice question: "hears" a sample question after a moment.
+  useEffect(() => {
+    if (!listening) return;
+    const id = window.setTimeout(() => {
+      setListening(false);
+      ask("Who did I meet in Dubai who works in shipping?");
+    }, 1600);
+    return () => window.clearTimeout(id);
+  }, [listening]);
+
+  function ask(question: string) {
+    const q = question.trim();
+    if (!q) return;
+    setEntries((list) => [...list, { id: nextId.current++, question: q }]);
+    setText("");
+  }
+
+  return (
+    <main className="mx-auto max-w-xl px-5 pb-28">
+      <ScreenHeader
+        title="Ask"
+        actions={
+          entries.length > 0 && (
+            <Button variant="ghost" size="touch" className="text-primary" onClick={() => setEntries([])}>
+              Clear
+            </Button>
+          )
+        }
+      />
+
+      {entries.length === 0 ? (
+        <section className="pt-6">
+          <h2 className="max-w-[20ch] text-[1.75rem] leading-tight font-semibold tracking-tight">
+            What do you want to know about your people?
+          </h2>
+          <p className="mt-2 text-[0.95rem] text-muted-foreground">
+            Ask by place, tag, date or name. Answers come only from your own notes.
+          </p>
+          <ul className="mt-6 divide-y border-y">
+            {SUGGESTED_QUESTIONS.map((q) => (
+              <li key={q}>
+                <button
+                  type="button"
+                  onClick={() => ask(q)}
+                  className="flex min-h-13 w-full items-center gap-3 py-2 text-left text-[1.0625rem]"
+                >
+                  <SparklesIcon className="size-4 shrink-0 text-primary" aria-hidden />
+                  {q}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : (
+        <div className="divide-y" aria-live="polite">
+          {entries.map((e) => (
+            <AskAnswer key={e.id} question={e.question} people={people} onAsk={ask} />
+          ))}
+        </div>
+      )}
+      <div ref={endRef} />
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          ask(text);
+        }}
+        className="fixed inset-x-0 bottom-(--tabbar-h) z-20 border-t bg-background/95 backdrop-blur-md"
+      >
+        <div className="mx-auto flex max-w-xl items-center gap-2 px-5 py-3">
+          <div className="relative min-w-0 flex-1">
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              enterKeyHint="send"
+              placeholder={listening ? "Listening…" : "Ask anything about your people"}
+              aria-label="Your question"
+              className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40"
+            />
+            <button
+              type="button"
+              onClick={() => setListening(true)}
+              aria-label="Ask with your voice"
+              aria-pressed={listening}
+              className={cn(
+                "absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
+                listening ? "animate-pulse text-primary" : "text-muted-foreground",
+              )}
+            >
+              <MicIcon className="size-5" />
+            </button>
+          </div>
+          <Button type="submit" size="icon-touch" aria-label="Ask" disabled={!text.trim()} className="size-12 rounded-xl">
+            <ArrowUpIcon />
+          </Button>
+        </div>
+      </form>
+    </main>
+  );
+}

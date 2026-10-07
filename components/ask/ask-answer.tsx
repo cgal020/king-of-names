@@ -2,47 +2,35 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ChevronLeftIcon, SparklesIcon } from "lucide-react";
+import { SparklesIcon } from "lucide-react";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
-import { mockAnswer, type AskAnswer } from "@/lib/mock/ask";
+import { mockAnswer, type AskAnswer as Answer } from "@/lib/mock/ask";
 import type { Person } from "@/lib/types";
 
-// Answer to an Ask AI question, citing the people it drew on.
+// One question and its answer, citing the people it drew on.
 // Mockup: answers come from a rule-based stand-in after a short delay.
-export function AskPanel({
+export function AskAnswer({
   question,
   people,
   onAsk,
-  onClose,
 }: {
   question: string;
   people: Person[];
   onAsk: (question: string) => void;
-  onClose: () => void;
 }) {
-  const [result, setResult] = useState<{ question: string; answer: AskAnswer } | null>(null);
+  const [answer, setAnswer] = useState<Answer | null>(null);
 
   useEffect(() => {
-    const id = window.setTimeout(() => setResult({ question, answer: mockAnswer(question, people) }), 900);
+    const id = window.setTimeout(() => setAnswer(mockAnswer(question, people)), 900);
     return () => window.clearTimeout(id);
   }, [question, people]);
 
-  const answer = result?.question === question ? result.answer : null;
   const followUps = answer?.followUps.filter((f) => f.toLowerCase() !== question.toLowerCase()) ?? [];
 
   return (
-    <section aria-live="polite" aria-busy={!answer} className="pt-2 pb-6">
-      <button
-        type="button"
-        onClick={onClose}
-        className="-ml-2 flex h-9 items-center gap-0.5 pr-2 text-sm font-medium text-primary"
-      >
-        <ChevronLeftIcon className="size-4" aria-hidden />
-        All people
-      </button>
-
-      <p className="mt-2 flex items-start gap-2 text-sm font-medium text-muted-foreground">
+    <article aria-busy={!answer} className="py-5">
+      <p className="flex items-start gap-2 text-[0.95rem] font-medium text-muted-foreground">
         <SparklesIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden />
         {question}
       </p>
@@ -75,7 +63,7 @@ export function AskPanel({
           )}
 
           {followUps.length > 0 && (
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {followUps.map((f) => (
                 <button
                   key={f}
@@ -88,12 +76,8 @@ export function AskPanel({
               ))}
             </div>
           )}
-
-          <p className="mt-6 text-xs text-muted-foreground">
-            Answers come only from your own notes. Preview answers are simulated.
-          </p>
         </>
       )}
-    </section>
+    </article>
   );
 }

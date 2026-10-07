@@ -4,10 +4,10 @@
 
 ## 1. Executive summary
 
-- **The market's middle is empty.** Funded personal CRMs (Mesh, Dex, folk) build networks from inboxes and calendars or serve sales teams, and are only now adding mobile capture. Card apps (Blinq, CamCard, Popl) are drifting toward event lead capture for sales teams. Voice tools and wearables (Plaud, Granola, Bee, Omi) remember meetings, not people. No product in the notes combines one-tap voice capture, an automatic GPS and date stamp, LLM-extracted fields, a clustered map with a city picker, photos of the person, card and place, and WhatsApp intake [1][2][3][4][5].
+- **The market's middle is empty.** The leading personal CRMs (Mesh, Dex, folk) build networks from inboxes and calendars or serve sales teams, and are only now adding mobile capture. Card apps (Blinq, CamCard, Popl) are drifting toward event lead capture for sales teams. Voice tools and wearables (Plaud, Granola, Bee, Omi) remember meetings, not people. No product in the notes combines one-tap voice capture, an automatic GPS and date stamp, LLM-extracted fields, a clustered map with a city picker, photos of the person, card and place, and WhatsApp intake [1][2][3][4][5].
 - **The closest rivals are small or adjacent.** Dex already turns WhatsApp and SMS messages, including voice notes, into contacts, and scans cards offline. But its map shows contacts' addresses rather than where you met them, and only on web and desktop [2][6][7]. YourPond has voice capture and a city-clustered map, but of where people *live*, and its free tier stops at 25 contacts [8][9]. Quis, MetMe and Remember Names do map where you met, but have 1 to 24 US App Store ratings each, are mostly iOS-only, or are still in beta [10][11][12]. A where-met map is not a moat by itself. The moat is capture speed plus multilingual extraction (Arabic and Thai, which Apple Intelligence does not support), cross-platform reach and messaging intake [13].
 - **Trust is the price of entry.** In this category, apps die and data disappears. UpHabit closed in April 2026; Clay was acquired and renamed Mesh; Limitless gave EU and UK users two weeks to export before deletion; Humane deleted all customer data [14][15][16][17]. Export (vCard and CSV), account deletion, and a "no training, no enrichment, no face recognition" pledge are now baseline expectations, not extras.
-- **The three prototypes need sharper positioning.** Card scanning is a commodity (Dex, folk, Mesh, Covve, CamCard and Contacts+ all have it), and most digital-card QR codes carry only a profile URL [6][18][19][20]. "Ask AI" over your own contacts is table stakes (Mesh Nexus, Dex, folk, Nametrace, Revere). But nobody documents answering "who did I meet in Bangkok?" from a where-met geotag [21][22]. Photos of the person set PeopleMap apart from the funded CRMs. In the UAE, though, photographing or keeping images of someone without consent is a crime under Cybercrime Law Article 44 [23].
+- **The three prototypes need sharper positioning.** Card scanning is a commodity (Dex, folk, Mesh, Covve, CamCard and Contacts+ all have it), and most digital-card QR codes carry only a profile URL [6][18][19][20]. "Ask AI" over your own contacts is table stakes (Mesh Nexus, Dex, folk, Nametrace, Revere). But nobody documents answering "who did I meet in Bangkok?" from a where-met geotag [21][22]. Photos of the person set PeopleMap apart from the leading CRMs. In the UAE, though, photographing or keeping images of someone without consent is a crime under Cybercrime Law Article 44 [23].
 - **The PWA can ship most of Phase 2 now.** Reminders work with a Home Screen install on iOS (Declarative Web Push from iOS 18.4) and need an email or in-app fallback. Other items are ready today:
   - vCard export, with a hint for iOS's confusing save sheet;
   - an offline capture queue;
@@ -20,7 +20,7 @@
 
 ## 2. Competitor profiles
 
-### 2a. Personal CRMs and relationship managers: three funded leaders, a fragile long tail
+### 2a. Personal CRMs and relationship managers: three established leaders, a fragile long tail
 
 **Mesh (formerly Clay): alive, acquired, rebranded.**
 - **Status:** Automattic bought Clay in June 2025 [42][43]. It was renamed Mesh (me.sh) on 20 March 2026 [15]. A third-party claim of a 2024 rename conflicts with the official post [44]. Android launched on 12 August 2026 [1].
@@ -173,12 +173,12 @@ Across the 17 card apps reviewed, none showed WhatsApp intake (CamCard only shar
 | **Face Sherlock AI** | iOS (July 2026) [166] | — | **On-device face matching** against a private face library | A legal red flag (see section 8) |
 | **Sidewalk, Contacts Map** | iOS [167][168] | Map where contacts **live**, not where you met | — | — |
 
-## 3. How the three new prototypes compare
+## 3. Evaluation of the three newly prototyped features
 
 ### 3.1 Geotagged photos of the person, card and place
 
 **Who already does it, and how well.**
-- **Funded CRMs:** none documents a "take a photo of the person" step. Mesh avatars come from connected sources [46]. Dex accepts photos by WhatsApp but has no confirmed person-photo field [2]. Monica allows uploads [64], and YourPond has profile photos [8].
+- **Leading CRMs (Mesh, Dex, folk):** none documents a "take a photo of the person" step. Mesh avatars come from connected sources [46]. Dex accepts photos by WhatsApp but has no confirmed person-photo field [2]. Monica allows uploads [64], and YourPond has profile photos [8].
 - **Small name-memory apps:** here the "photo plus place plus time" pattern does exist.
   - Remember Names: up to 10 photos, a clustered map and location-triggered recall [12].
   - Remet: reads GPS from imported photos and crops faces [160].
@@ -402,7 +402,7 @@ No product publishes prices in AED or THB, and regional App Store prices were no
 **White space PeopleMap can own:**
 
 1. **Where and when you met, as the main index, on every platform.**
-   - No funded CRM or OS stamps the meeting place. Apple and Google Contacts have no where-met field and no map by meeting place [154][158].
+   - No leading CRM or OS stamps the meeting place. Apple and Google Contacts have no where-met field and no map by meeting place [154][158].
    - The indie apps that do it have 1 to 24 ratings, are iOS-only or in beta, and lack voice capture or reminders [5][11][12].
    - At least seven indie attempts have not broken out. The hard parts are capture friction, habit and distribution, not the idea.
 2. **Multilingual capture for the Gulf and Southeast Asia.**
@@ -570,7 +570,7 @@ No product publishes prices in AED or THB, and regional App Store prices were no
 - **Do not send person photos to OpenAI.** OpenAI prohibits building facial-recognition databases without consent [171].
 - **Storage:** keep face photos encrypted, behind short-lived signed URLs. Make them optional, gate them behind a consent checkbox, and make them easy to delete.
 
-## 9. Prioritised recommendations
+## 9. Prioritized recommendations
 
 Phases: **Quick win** (current MVP), **Pull forward** (from a later phase), **Later**, **Avoid**. Effort is S, M or L.
 

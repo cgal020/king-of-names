@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronDownIcon, MicIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
-import { AskPanel } from "@/components/ask-panel";
+import { useAskStore } from "@/components/ask/ask-store";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { buttonVariants } from "@/components/ui/button";
-import { looksLikeQuestion, SUGGESTED_QUESTIONS } from "@/lib/ask/question";
-import { knownTags, relationshipLabel, type Relationship } from "@/lib/tags";
+import { looksLikeQuestion } from "@/lib/ask/question";
 import { firstLine, formatMetDate, formatMonthGroup } from "@/lib/format";
+import { knownTags, relationshipLabel, type Relationship } from "@/lib/tags";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -45,26 +46,16 @@ export function PeopleList({ people }: { people: Person[] }) {
   const [when, setWhen] = useState<When>("");
   const [type, setType] = useState("");
   const [tag, setTag] = useState("");
-  const [asked, setAsked] = useState<string | null>(null);
-  const [focused, setFocused] = useState(false);
-  const [listening, setListening] = useState(false);
-
-  function ask(question: string) {
-    setQuery(question);
-    setAsked(question);
-  }
-
-  // Mockup voice question: "hears" a sample question after a moment.
-  useEffect(() => {
-    if (!listening) return;
-    const id = window.setTimeout(() => {
-      setListening(false);
-      ask("Who did I meet in Dubai who works in shipping?");
-    }, 1600);
-    return () => window.clearTimeout(id);
-  }, [listening]);
+  const router = useRouter();
+  const { setPending } = useAskStore();
 
   const isQuestion = looksLikeQuestion(query);
+
+  // Questions are answered on the Ask tab.
+  function askAi() {
+    setPending(query.trim());
+    router.push("/ask");
+  }
 
   const cities = useMemo(() => uniqueSorted(people.map((p) => p.city)), [people]);
   const countries = useMemo(() => uniqueSorted(people.map((p) => p.country)), [people]);
@@ -113,158 +104,100 @@ export function PeopleList({ people }: { people: Person[] }) {
             type="search"
             enterKeyHint={isQuestion ? "send" : "search"}
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setAsked(null);
-            }}
+            onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Enter" && query.trim()) {
+              if (e.key === "Enter" && isQuestion) {
                 e.preventDefault();
-                if (isQuestion) setAsked(query.trim());
+                askAi();
               }
             }}
-            onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
-            placeholder={listening ? "Listening\u2026" : "Search or ask a question"}
+            placeholder="Search names, notes, places, tags"
             aria-label="Search people"
             className="h-11 w-full rounded-xl bg-muted pr-10 pl-10 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40 [&::-webkit-search-cancel-button]:hidden"
           />
-          {query ? (
+          {query && (
             <button
               type="button"
-              onClick={() => {
-                setQuery("");
-                setAsked(null);
-              }}
+              onClick={() => setQuery("")}
               aria-label="Clear search"
               className="absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground"
             >
               <XIcon className="size-4" />
             </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setListening(true)}
-              aria-label="Ask with your voice"
-              aria-pressed={listening}
-              className={cn(
-                "absolute top-1/2 right-1 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
-                listening ? "animate-pulse text-primary" : "text-muted-foreground",
-              )}
-            >
-              <MicIcon className="size-4.5" />
-            </button>
           )}
         </div>
-        {focused && !query && !asked && <SuggestedQuestions onAsk={ask} />}
-        {!asked && !(focused && !query) && (
-          <div className="mt-2.5 flex gap-2 overflow-x-auto [scrollbar-width:none]">
-            <FilterChip
-              label="Type"
-              allLabel="Business and personal"
-              value={type}
-              onChange={setType}
-              options={["business", "personal"]}
-              optionLabel={(v) => relationshipLabel(v as Relationship) ?? v}
-            />
-            <FilterChip label="Tag" allLabel="All tags" value={tag} onChange={setTag} options={tags} />
-            <FilterChip label="City" allLabel="All cities" value={city} onChange={setCity} options={cities} />
-            <FilterChip
-              label="Country"
-              allLabel="All countries"
-              value={country}
-              onChange={setCountry}
-              options={countries}
-            />
-            <FilterChip
-              label="Any time"
-              allLabel="Any time"
-              value={when}
-              onChange={(v) => setWhen(v as When)}
-              options={WHEN_OPTIONS.slice(1).map((o) => o.value)}
-              optionLabel={(v) => WHEN_OPTIONS.find((o) => o.value === v)?.label ?? v}
-            />
-          </div>
-        )}
+        <div className="mt-2.5 flex gap-2 overflow-x-auto [scrollbar-width:none]">
+          <FilterChip
+            label="Type"
+            allLabel="Business and personal"
+            value={type}
+            onChange={setType}
+            options={["business", "personal"]}
+            optionLabel={(v) => relationshipLabel(v as Relationship) ?? v}
+          />
+          <FilterChip label="Tag" allLabel="All tags" value={tag} onChange={setTag} options={tags} />
+          <FilterChip label="City" allLabel="All cities" value={city} onChange={setCity} options={cities} />
+          <FilterChip
+            label="Country"
+            allLabel="All countries"
+            value={country}
+            onChange={setCountry}
+            options={countries}
+          />
+          <FilterChip
+            label="Any time"
+            allLabel="Any time"
+            value={when}
+            onChange={(v) => setWhen(v as When)}
+            options={WHEN_OPTIONS.slice(1).map((o) => o.value)}
+            optionLabel={(v) => WHEN_OPTIONS.find((o) => o.value === v)?.label ?? v}
+          />
+        </div>
       </div>
 
-      {asked ? (
-        <AskPanel
-          question={asked}
-          people={people}
-          onAsk={ask}
-          onClose={() => {
-            setAsked(null);
-            setQuery("");
-          }}
-        />
-      ) : (
-        <>
-          {isQuestion && <AskRow question={query} onAsk={() => setAsked(query.trim())} />}
+      {isQuestion && <AskRow question={query} onAsk={askAi} />}
 
-          <p className="sr-only" aria-live="polite">
-            {results.length} {results.length === 1 ? "person" : "people"}
-          </p>
+      <p className="sr-only" aria-live="polite">
+        {results.length} {results.length === 1 ? "person" : "people"}
+      </p>
 
-          {results.length > 0
-            ? groups.map(([month, list]) => (
-                <section key={month} className="mt-3">
-                  <h2 className="pt-3 pb-1 text-sm font-medium text-muted-foreground">{month}</h2>
-                  <ul className="divide-y">
-                    {list.map((p) => (
-                      <li key={p.id}>
-                        <PersonRow person={p} />
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ))
-            : // A question rarely matches as plain text; the Ask AI row is the answer.
-              !isQuestion && (
-                <div className="py-16 text-center">
-                  <p className="font-medium">No one matches{query ? ` \u201c${query}\u201d` : " these filters"}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Try part of a name, a company or a place.</p>
-                  {filtered && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setQuery("");
-                        setCity("");
-                        setCountry("");
-                        setWhen("");
-                        setType("");
-                        setTag("");
-                      }}
-                      className="mt-4 h-11 rounded-xl px-4 text-[0.95rem] font-medium text-primary"
-                    >
-                      Clear search and filters
-                    </button>
-                  )}
-                </div>
+      {results.length > 0
+        ? groups.map(([month, list]) => (
+            <section key={month} className="mt-3">
+              <h2 className="pt-3 pb-1 text-sm font-medium text-muted-foreground">{month}</h2>
+              <ul className="divide-y">
+                {list.map((p) => (
+                  <li key={p.id}>
+                    <PersonRow person={p} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        : // A question rarely matches as plain text; the Ask AI row is the answer.
+          !isQuestion && (
+            <div className="py-16 text-center">
+              <p className="font-medium">No one matches{query ? ` \u201c${query}\u201d` : " these filters"}</p>
+              <p className="mt-1 text-sm text-muted-foreground">Try part of a name, a company or a place.</p>
+              {filtered && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    setCity("");
+                    setCountry("");
+                    setWhen("");
+                    setType("");
+                    setTag("");
+                  }}
+                  className="mt-4 h-11 rounded-xl px-4 text-[0.95rem] font-medium text-primary"
+                >
+                  Clear search and filters
+                </button>
               )}
-        </>
-      )}
+            </div>
+          )}
     </>
-  );
-}
-
-function SuggestedQuestions({ onAsk }: { onAsk: (question: string) => void }) {
-  return (
-    <div className="mt-2.5 flex gap-2 overflow-x-auto [scrollbar-width:none]">
-      {SUGGESTED_QUESTIONS.map((q) => (
-        <button
-          key={q}
-          type="button"
-          // Keeps the search box focused so the tap lands before it blurs.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={() => onAsk(q)}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3.5 text-sm font-medium text-primary"
-        >
-          <SparklesIcon className="size-3.5" aria-hidden />
-          {q}
-        </button>
-      ))}
-    </div>
   );
 }
 

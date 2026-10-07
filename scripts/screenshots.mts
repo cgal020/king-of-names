@@ -111,16 +111,9 @@ const SHOTS: Shot[] = [
       await p.waitForTimeout(300);
     },
   },
+  { name: "22-ask-tab", path: "/ask" },
   {
-    name: "22-ask-suggestions",
-    path: "/people",
-    act: async (p) => {
-      await p.getByRole("searchbox", { name: "Search people" }).focus();
-      await p.waitForTimeout(200);
-    },
-  },
-  {
-    name: "23-ask-typed",
+    name: "23-people-question-row",
     path: "/people",
     act: async (p) => {
       await p.getByRole("searchbox", { name: "Search people" }).fill("Who did I meet in Dubai who works in shipping?");
@@ -129,10 +122,9 @@ const SHOTS: Shot[] = [
   },
   {
     name: "24-ask-thinking",
-    path: "/people",
+    path: "/ask",
     act: async (p) => {
-      await p.getByRole("searchbox", { name: "Search people" }).fill("Who do I know in Bangkok?");
-      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.getByRole("button", { name: "Who do I know in Bangkok?" }).click();
       await p.waitForTimeout(300);
     },
   },
@@ -153,20 +145,20 @@ const SHOTS: Shot[] = [
     },
   },
   {
-    name: "28-ask-investors",
-    path: "/people",
+    name: "28-ask-thread",
+    path: "/ask",
     act: async (p) => {
-      await p.getByRole("searchbox", { name: "Search people" }).fill("Who are my investors?");
-      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.getByRole("button", { name: "Who are my investors?" }).click();
+      await p.waitForTimeout(1300);
+      await p.getByRole("button", { name: "Who do I know in Dubai?" }).click();
       await p.waitForTimeout(1300);
     },
   },
   {
     name: "25-ask-answer",
-    path: "/people",
+    path: "/ask",
     act: async (p) => {
-      await p.getByRole("searchbox", { name: "Search people" }).fill("Who do I know in Bangkok?");
-      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.getByRole("button", { name: "Who do I know in Bangkok?" }).click();
       await p.waitForTimeout(1300);
     },
   },
