@@ -13,6 +13,8 @@ export async function mockReadCard(): Promise<CardDetails> {
     emails: ["sofia@gulffreight.example"],
     websites: ["https://gulffreight.example"],
     linkedin: null,
+    line: null,
+    digitalCard: null,
     address: "Jebel Ali Free Zone, Dubai",
     notes: null,
     birthday: null,

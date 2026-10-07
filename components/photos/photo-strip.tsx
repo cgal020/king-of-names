@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { usePhotoPicker } from "@/components/photos/photo-picker";
 import { usePhotos } from "@/components/photos/photo-store";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Photo, PhotoKind } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ export function PhotoStrip({
 }) {
   const picker = usePhotoPicker();
   const [choosing, setChoosing] = useState(false);
+  const [askingPermission, setAskingPermission] = useState(false);
   const [viewing, setViewing] = useState<number | null>(null);
 
   return (
@@ -101,7 +103,9 @@ export function PhotoStrip({
                     type="button"
                     onClick={() => {
                       setChoosing(false);
-                      picker.open({ ...target, kind });
+                      // Photos of people need their permission first.
+                      if (kind === "person") setAskingPermission(true);
+                      else picker.open({ ...target, kind });
                     }}
                     className="flex size-24 flex-col items-center justify-center gap-1.5 rounded-xl border border-primary/40 bg-primary/5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
                   >
@@ -124,6 +128,33 @@ export function PhotoStrip({
             </li>
           ))}
       </ul>
+
+      {askingPermission && (
+        <div role="alertdialog" aria-labelledby="photo-permission-title" className="mt-3 rounded-2xl bg-muted p-4">
+          <p id="photo-permission-title" className="text-[0.95rem] font-medium">
+            Do you have their permission?
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Only keep a photo of someone who has agreed to it. In the UAE, taking or keeping a person&rsquo;s photo
+            without consent is a crime. A photo of their card or the place works without one.
+          </p>
+          <div className="mt-3 flex gap-2">
+            <Button variant="outline" size="touch" className="flex-1" onClick={() => setAskingPermission(false)}>
+              Cancel
+            </Button>
+            <Button
+              size="touch"
+              className="flex-[2]"
+              onClick={() => {
+                setAskingPermission(false);
+                picker.open({ ...target, kind: "person" });
+              }}
+            >
+              They agreed
+            </Button>
+          </div>
+        </div>
+      )}
 
       {viewing !== null && photos[viewing] && (
         <PhotoViewer
@@ -253,6 +284,9 @@ function PhotoViewer({
                 </button>
               ))}
             </div>
+          )}
+          {editable && photo.kind === "person" && (
+            <p className="text-sm text-white/70">Keep a photo of someone only with their permission.</p>
           )}
         </div>
       </div>

@@ -3,7 +3,18 @@ import type { Confidence, Person } from "@/lib/types";
 
 type PersonInput = Omit<Person, "id" | "created_at" | "updated_at">;
 
-export type CardField = "full_name" | "phone" | "company" | "role" | "email" | "website" | "linkedin" | "address" | "birthday";
+export type CardField =
+  | "full_name"
+  | "phone"
+  | "company"
+  | "role"
+  | "email"
+  | "website"
+  | "linkedin"
+  | "line"
+  | "digital_card"
+  | "address"
+  | "birthday";
 
 // Merges details read from a business card into a voice-note draft.
 // Printed details beat spoken ones for phone, email, company and role, since
@@ -32,6 +43,10 @@ export function mergeCard(
   if (card.emails[0] && card.emails[0] !== draft.extras.email) take("email", () => (person.extras.email = card.emails[0]));
   if (card.websites[0] && !draft.extras.website) take("website", () => (person.extras.website = card.websites[0]));
   if (card.linkedin && !draft.extras.linkedin) take("linkedin", () => (person.extras.linkedin = card.linkedin!));
+  if (card.line && !draft.extras.line) take("line", () => (person.extras.line = card.line!));
+  if (card.digitalCard && !draft.extras.digital_card) {
+    take("digital_card", () => (person.extras.digital_card = card.digitalCard!.url));
+  }
   if (card.address && !draft.extras.address) take("address", () => (person.extras.address = card.address!));
   if (card.birthday && !draft.birthday_month) {
     take("birthday", () => {

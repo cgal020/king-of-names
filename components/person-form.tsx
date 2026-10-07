@@ -115,10 +115,12 @@ export function PersonForm({
     followUp: Boolean(values.follow_up_note || values.follow_up_date),
     work: Boolean(values.extras.company || values.extras.role),
     email: Boolean(values.extras.email),
-    web: Boolean(values.extras.website || values.extras.linkedin),
+    web: Boolean(values.extras.website || values.extras.linkedin || values.extras.line || values.extras.digital_card),
     address: Boolean(values.extras.address),
   };
   const visible = (s: Section) => has[s] || opened.has(s);
+  // An empty Website box only shows when no other link is there.
+  const hasOtherLinks = Boolean(values.extras.linkedin || values.extras.line || values.extras.digital_card);
   const hidden = (Object.keys(SECTION_LABELS) as Section[]).filter((s) => !visible(s));
 
   const duplicates = useMemo(
@@ -417,7 +419,7 @@ export function PersonForm({
 
         {visible("web") && (
           <div className="space-y-4">
-            {(values.extras.website || opened.has("web") || !values.extras.linkedin) && (
+            {(values.extras.website || opened.has("web") || !hasOtherLinks) && (
               <Field label="Website" htmlFor="website" fromCard={fromCard("website")}>
                 <Input
                   id="website"
@@ -437,6 +439,30 @@ export function PersonForm({
                   inputMode="url"
                   value={values.extras.linkedin ?? ""}
                   onChange={(e) => setExtra("linkedin", e.target.value)}
+                  className="h-11 rounded-xl px-3.5"
+                />
+              </Field>
+            )}
+            {(values.extras.line || fromCard("line")) && (
+              <Field label="LINE" htmlFor="line" fromCard={fromCard("line")}>
+                <Input
+                  id="line"
+                  type="url"
+                  inputMode="url"
+                  value={values.extras.line ?? ""}
+                  onChange={(e) => setExtra("line", e.target.value)}
+                  className="h-11 rounded-xl px-3.5"
+                />
+              </Field>
+            )}
+            {(values.extras.digital_card || fromCard("digital_card")) && (
+              <Field label="Digital card" htmlFor="digital_card" fromCard={fromCard("digital_card")}>
+                <Input
+                  id="digital_card"
+                  type="url"
+                  inputMode="url"
+                  value={values.extras.digital_card ?? ""}
+                  onChange={(e) => setExtra("digital_card", e.target.value)}
                   className="h-11 rounded-xl px-3.5"
                 />
               </Field>

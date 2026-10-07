@@ -145,6 +145,25 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: "29-card-link-only",
+    path: "/capture/card",
+    act: async (p) => {
+      // A Blinq QR, which holds only a profile link (tests/fixtures/qr-blinq-link.txt).
+      await p.locator("input[type=file]").setInputFiles("tests/fixtures/qr-blinq-link.png");
+      await p.getByText("This QR only links to their Blinq profile").waitFor();
+    },
+  },
+  {
+    name: "30-photo-permission",
+    path: "/people/omar-al-mansouri",
+    act: async (p) => {
+      await p.getByRole("button", { name: "Add photo" }).click();
+      await p.getByRole("button", { name: "Them" }).click();
+      await p.getByRole("alertdialog").scrollIntoViewIfNeeded();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
     name: "28-ask-thread",
     path: "/ask",
     act: async (p) => {

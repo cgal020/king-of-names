@@ -18,7 +18,7 @@ import { chooseGeotag } from "@/lib/photos/geotag";
 import { preparePhoto } from "@/lib/photos/prepare";
 import { cn } from "@/lib/utils";
 
-type Phase = "starting" | "live" | "denied" | "reading" | "result";
+type Phase = "starting" | "live" | "reading" | "result";
 
 const noSubscribe = () => () => {};
 
@@ -41,12 +41,29 @@ export function CardScanner() {
   const [phase, setPhase] = useState<Phase>("starting");
   const [still, setStill] = useState<{ url: string; blob: Blob; width: number; height: number } | null>(null);
   const [result, setLocalResult] = useState<CardResult | null>(null);
+  const [cameraDenied, setCameraDenied] = useState(false);
+  // Set while photographing a card whose QR held only a link; the link is
+  // kept and the photo supplies the details.
+  const [linkDetails, setLinkDetails] = useState<CardDetails | null>(null);
 
-  const showResult = useCallback((details: CardDetails, source: CardResult["source"]) => {
-    navigator.vibrate?.(30);
-    setLocalResult({ details, source });
-    setPhase("result");
-  }, []);
+  const showResult = useCallback(
+    (details: CardDetails, source: CardResult["source"]) => {
+      navigator.vibrate?.(30);
+      const merged = linkDetails
+        ? {
+            ...details,
+            digitalCard: details.digitalCard ?? linkDetails.digitalCard,
+            linkedin: details.linkedin ?? linkDetails.linkedin,
+            line: details.line ?? linkDetails.line,
+            websites: [...new Set([...details.websites, ...linkDetails.websites])],
+          }
+        : details;
+      setLinkDetails(null);
+      setLocalResult({ details: merged, source });
+      setPhase("result");
+    },
+    [linkDetails],
+  );
 
   // Start the rear camera.
   useEffect(() => {
@@ -64,7 +81,7 @@ export function CardScanner() {
         await video.play();
         setPhase("live");
       })
-      .catch(() => setPhase("denied"));
+      .catch(() => setCameraDenied(true));
     return () => {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
@@ -73,7 +90,8 @@ export function CardScanner() {
 
   // Look for a QR code a few times a second while the camera is live.
   useEffect(() => {
-    if (phase !== "live") return;
+    // While photographing a link-only card, the QR would just be found again.
+    if (phase !== "live" || linkDetails) return;
     let busy = false;
     const id = window.setInterval(async () => {
       const video = videoRef.current;
@@ -90,15 +108,17 @@ export function CardScanner() {
       }
     }, 300);
     return () => window.clearInterval(id);
-  }, [phase, showResult]);
+  }, [phase, showResult, linkDetails]);
 
   async function readStill(image: { url: string; blob: Blob; width: number; height: number }) {
     setStill(image);
     setPhase("reading");
-    const bitmap = await createImageBitmap(image.blob);
-    const text = await detectQr(bitmap).catch(() => null);
-    bitmap.close();
-    if (text) return showResult(parseQr(text).details, "qr");
+    if (!linkDetails) {
+      const bitmap = await createImageBitmap(image.blob);
+      const text = await detectQr(bitmap).catch(() => null);
+      bitmap.close();
+      if (text) return showResult(parseQr(text).details, "qr");
+    }
     showResult(await mockReadCard(), "photo");
   }
 
@@ -151,13 +171,26 @@ export function CardScanner() {
     router.push("/capture/review");
   }
 
+  const fallback = supported === false || cameraDenied;
+
   function scanAgain() {
+    setLinkDetails(null);
     setLocalResult(null);
     setStill(null);
-    setPhase(supported ? "live" : "starting");
+    setPhase(fallback ? "starting" : "live");
   }
 
-  const fallback = supported === false || phase === "denied";
+  // The QR held only a link: keep it and take a photo of the card for the details.
+  function photographCard() {
+    setLinkDetails(result?.details ?? null);
+    setLocalResult(null);
+    setStill(null);
+    setPhase(fallback ? "starting" : "live");
+    if (fallback) {
+      fileRef.current?.setAttribute("capture", "environment");
+      fileRef.current?.click();
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-black text-white">
@@ -198,7 +231,9 @@ export function CardScanner() {
             <p className="absolute inset-x-6 bottom-6 text-center text-sm text-white/85">
               {phase === "starting"
                 ? "Starting the camera…"
-                : "Fit the card in the frame. QR codes are read automatically."}
+                : linkDetails
+                  ? "Fit the card in the frame and take a photo."
+                  : "Fit the card in the frame. QR codes are read automatically."}
             </p>
           </>
         )}
@@ -208,7 +243,7 @@ export function CardScanner() {
             <ScanTextIcon className="size-10 text-white/70" aria-hidden />
             <p className="text-lg font-medium">Take a photo of the card</p>
             <p className="max-w-[32ch] text-sm text-white/70">
-              {phase === "denied"
+              {cameraDenied
                 ? "Camera access is off. You can still take or choose a photo."
                 : "The live camera isn't available here, so take a photo instead. QR codes on the card are read too."}
             </p>
@@ -258,7 +293,7 @@ export function CardScanner() {
       )}
 
       {phase === "result" && result && (
-        <ResultSheet result={result} onUse={addToNote} onAgain={scanAgain} />
+        <ResultSheet result={result} onUse={addToNote} onAgain={scanAgain} onPhotograph={photographCard} />
       )}
     </div>
   );
@@ -286,13 +321,19 @@ function ResultSheet({
   result,
   onUse,
   onAgain,
+  onPhotograph,
 }: {
   result: CardResult;
   onUse: () => void;
   onAgain: () => void;
+  onPhotograph: () => void;
 }) {
   const d = result.details;
+  // Most digital-card QR codes hold only a profile link, not the details.
+  const linkOnly =
+    result.source === "qr" && !d.full_name && Boolean(d.digitalCard || d.linkedin || d.line || d.websites.length);
   const rows = [
+    { label: "Digital card", value: d.digitalCard ? `${d.digitalCard.service}\n${d.digitalCard.url}` : null },
     { label: "Name", value: d.full_name },
     { label: "Company", value: d.company },
     { label: "Role", value: d.role },
@@ -300,6 +341,7 @@ function ResultSheet({
     { label: d.emails.length > 1 ? "Emails" : "Email", value: d.emails.join("\n") },
     { label: "Website", value: d.websites.join("\n") },
     { label: "LinkedIn", value: d.linkedin },
+    { label: "LINE", value: d.line },
     { label: "Address", value: d.address },
     {
       label: "Birthday",
@@ -334,6 +376,20 @@ function ResultSheet({
             </div>
           ))}
         </dl>
+      )}
+      {linkOnly && (
+        <div className="mt-4 rounded-2xl bg-muted p-4">
+          <p className="text-[0.95rem] font-medium">
+            This QR only links to their {d.digitalCard?.service ?? "online"} profile
+          </p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Take a photo of the paper card to add their name, number and company.
+          </p>
+          <Button variant="outline" size="touch" className="mt-3 w-full" onClick={onPhotograph}>
+            <CameraIcon aria-hidden />
+            Photograph the card
+          </Button>
+        </div>
       )}
       <div className="mt-4 flex gap-3">
         <Button variant="outline" size="touch-lg" className="flex-1" onClick={onAgain}>

@@ -82,6 +82,8 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 22 | Ask, thinking / answer / thread | `24-ask-thinking`, `25-ask-answer`, `-dark`, `28-ask-thread` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line) and follow-up questions; further questions stack into a thread; Clear empties it. |
 | 23 | Tags on Review | `26-review-tags` | Relationship (Business / Personal / Both) and "How they could help" chips, marked "Suggested" when the AI chose them. |
 | 24 | People, tag filter | `27-people-tag-filter` | Type and Tag filter chips; here filtered to Investor. |
+| 25 | Card QR that is only a link | `29-card-link-only` | Most digital cards (Blinq, Popl, HiHello…) put only a profile link in the QR. The sheet saves the link and offers "Photograph the card" to get the details. |
+| 26 | Permission for a photo of a person | `30-photo-permission` | Choosing "Them" asks "Do you have their permission?" before the camera opens; card and place photos skip this. |
 
 Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
@@ -165,6 +167,22 @@ How it works now:
 - Settings lists tags in use with counts.
 
 Please design: the tag editor on Review (it must stay a glance, not a form), the tag display on profile, list rows (should rows show tags?), map pins or filters by tag, and tag management in Settings (rename, merge, delete).
+
+### 7.5 What the market research changes for design
+
+The October 2026 market research (256 sources; full report at `docs/research/market-research-2026-10.md`) compared 30+ personal CRMs, card apps, voice tools and "where we met" apps, and the privacy rules in the UAE, Australia and Thailand. What matters for design:
+
+- **Where and when you met is the differentiator.** Leading CRMs (Mesh, Dex, folk) don't stamp the meeting place, and the small apps that do are iOS-only or in beta. Let the place and date carry weight on profiles, the map and Ask ("who did I meet in Bangkok?").
+- **Card scanning and AI search are now expected**, so they must feel faster and more trustworthy than rivals, not just present. Mesh's own docs warn its assistant can invent people; our answers must always show the people they used.
+- **Trust is the price of entry.** UpHabit shut down, Clay became Mesh, Humane deleted everything. Make export and account deletion easy to find, and give the privacy pledge a visible home: no AI training on your notes, no enrichment or scraping, no face recognition.
+- **Consent before AI.** Design an explicit screen before the first AI use and a short two-layer privacy notice naming the providers (OpenAI and Anthropic, processing outside the UAE, Australia and Thailand) and where data is hosted (Singapore). Also a plain public page for "if you've been saved in this app".
+- **Photos of people are the legal hot spot.** In the UAE, taking or keeping someone's photo without consent is a crime (Cybercrime Law Art. 44). Built: a "Do you have their permission?" step before "Them" photos (screen 26). Place and card photos stay one tap.
+- **Digital-card QR codes are usually just a link.** Built: the link is saved and "Photograph the card" fills the details (screen 25).
+- **Arabic and Thai.** Names and notes will mix scripts and right-to-left text; check every name-bearing component with Arabic and Thai names.
+- **Offline is normal at events.** Design the "3 notes waiting to send" badge and the retry state.
+- **iPhone install coach.** Tie "Add to Home Screen" to what it unlocks (reminders, offline notes), since iOS has no install prompt.
+- **Likely next features** (recommended, not yet approved): "Save to phone contacts" with a "met at … on …" note; birthday and follow-up reminders with an in-app fallback; a trip mode showing who you know in the city you're heading to. Leave room for them.
+- **Avoid:** face recognition or grouping, contact enrichment, "overdue" scores or pipeline language, and bulk messaging.
 
 ## 8. Content and voice
 

@@ -10,10 +10,35 @@ export type CardDetails = {
   emails: string[];
   websites: string[];
   linkedin: string | null;
+  // A LINE profile link (line.me/ti/p/...), common in Thailand.
+  line: string | null;
+  // A hosted digital card (Blinq, Popl, HiHello...). These QR codes hold only
+  // a link, so the details have to come from a photo of the card.
+  digitalCard: { service: string; url: string } | null;
   address: string | null;
   notes: string | null;
   birthday: { day: number | null; month: number; year: number | null } | null;
 };
+
+// Digital business card services whose QR codes are profile links by default
+// (checked October 2026, docs/research/notes/gap_new_features.md).
+const DIGITAL_CARD_HOSTS: Record<string, string> = {
+  "blinq.me": "Blinq",
+  "popl.co": "Popl",
+  "hihello.me": "HiHello",
+  "hihello.com": "HiHello",
+  "linqapp.com": "Linq",
+  "wavecnct.com": "Wave",
+  "v1ce.co": "V1CE",
+  "tapt.io": "Tapt",
+  "mobilocard.com": "Mobilo",
+  "thehaystackapp.com": "Haystack",
+};
+
+function digitalCardService(host: string) {
+  const match = Object.keys(DIGITAL_CARD_HOSTS).find((h) => host === h || host.endsWith(`.${h}`));
+  return match ? DIGITAL_CARD_HOSTS[match] : null;
+}
 
 export type QrResult = {
   kind: "vcard" | "mecard" | "link" | "phone" | "email" | "text";
@@ -28,6 +53,8 @@ const empty = (): CardDetails => ({
   emails: [],
   websites: [],
   linkedin: null,
+  line: null,
+  digitalCard: null,
   address: null,
   notes: null,
   birthday: null,
@@ -78,10 +105,15 @@ function addUrl(details: CardDetails, url: string) {
     return;
   }
   const host = parsed.hostname.replace(/^www\./, "");
+  const service = digitalCardService(host);
   if (host === "linkedin.com" || host.endsWith(".linkedin.com")) {
     details.linkedin ??= url;
   } else if (host === "wa.me" && /^\/\d{7,}/.test(parsed.pathname)) {
     details.phones.push(`+${parsed.pathname.slice(1).replace(/\D/g, "")}`);
+  } else if (host === "line.me" && parsed.pathname.startsWith("/ti/p/")) {
+    details.line ??= url;
+  } else if (service) {
+    details.digitalCard ??= { service, url };
   } else if (!details.websites.includes(url)) {
     details.websites.push(url);
   }

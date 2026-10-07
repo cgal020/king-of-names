@@ -82,7 +82,18 @@ describe("parseQr: other formats", () => {
     expect(parseQr("https://www.linkedin.com/in/someone").details.linkedin).toBe("https://www.linkedin.com/in/someone");
     const card = parseQr("https://blinq.me/abc123");
     expect(card.kind).toBe("link");
-    expect(card.details.websites).toEqual(["https://blinq.me/abc123"]);
+    expect(card.details.digitalCard).toEqual({ service: "Blinq", url: "https://blinq.me/abc123" });
+    expect(card.details.websites).toEqual([]);
+    expect(parseQr("https://app.popl.co/card/xyz").details.digitalCard?.service).toBe("Popl");
+    expect(parseQr("https://hihello.com/p/abc").details.digitalCard?.service).toBe("HiHello");
+  });
+
+  it("keeps ordinary websites as websites", () => {
+    expect(parseQr("https://gulffreight.example").details.websites).toEqual(["https://gulffreight.example"]);
+  });
+
+  it("saves LINE profile links", () => {
+    expect(parseQr("https://line.me/ti/p/~nok.srisawat").details.line).toBe("https://line.me/ti/p/~nok.srisawat");
   });
 
   it("turns a WhatsApp link into a phone number", () => {
