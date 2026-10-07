@@ -22,3 +22,8 @@ One line per meaningful decision or deviation from the brief, newest last.
 - 2026-10-06: Design direction "quiet utility" (Apple Notes, Things), avoid corporate-CRM feel; recorded in PRODUCT.md.
 - 2026-10-06: System font stack instead of a web font: native feel on iPhone and Android, nothing to download, works offline.
 - 2026-10-06: Optional fields (phone, birthday, follow-up, company, email) stay hidden behind "+" chips until they have a value, so review is a glance rather than a form.
+- 2026-10-07: Photos added to Phase 1 (approved by Ann): the person (profile picture), their business card, and the moment or place. New `photos` table and private `photos` bucket. Estimated 5 to 7 extra hours on the 36-hour budget.
+- 2026-10-07: Photo geotag rule: a photo just taken in the app gets the phone's GPS; a library photo only gets the GPS saved inside it (often stripped by iOS and Android), otherwise "No location". The phone's current position is never stamped on an old photo.
+- 2026-10-07: Photos are re-encoded to JPEG (max 2048 px) in the browser before upload, which strips all EXIF; the location we keep lives in database columns.
+- 2026-10-07: Captures and photos link to people through same-user composite foreign keys, so a row can never point at another account's person even though row level security allows inserting your own row.
+- 2026-10-07: Playwright (from the brief's test stack) runs against the installed Chrome (`channel: "chrome"`) to avoid a browser download; `npm run screenshots` captures every screen for design reviews.

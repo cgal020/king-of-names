@@ -42,3 +42,6 @@ next-env.d.ts
 
 # env example is committed
 !.env.example
+
+# design handoff bundle (regenerate from docs/design-handoff)
+/docs/design-handoff.zip

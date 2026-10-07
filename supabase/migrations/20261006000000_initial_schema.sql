@@ -104,7 +104,9 @@ create table public.people (
       coalesce(city, '')
     )
   ) stored,
-  constraint lat_lng_together check ((lat is null) = (lng is null))
+  constraint lat_lng_together check ((lat is null) = (lng is null)),
+  -- Target for composite foreign keys, so rows can only link to the same user's people.
+  constraint people_id_user_unique unique (id, user_id)
 );
 
 create index people_user_city_idx on public.people (user_id, city);
@@ -141,7 +143,7 @@ create policy "people: delete own" on public.people
 create table public.captures (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
-  person_id uuid references public.people (id) on delete set null,
+  person_id uuid,
   audio_path text,
   audio_mime text,
   duration_seconds real,
@@ -157,7 +159,11 @@ create table public.captures (
   status text not null default 'uploaded'
     check (status in ('uploaded', 'transcribed', 'extracted', 'confirmed', 'failed', 'discarded')),
   error text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- A capture can only be linked to a person owned by the same user.
+  constraint captures_person_same_user foreign key (person_id, user_id)
+    references public.people (id, user_id) on delete set null (person_id),
+  constraint captures_id_user_unique unique (id, user_id)
 );
 
 -- Serves the "Needs review" strip and the per-user hourly rate limit.

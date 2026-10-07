@@ -39,6 +39,8 @@ describe("row level security between two accounts", () => {
   let personId: string;
   let captureId: string;
   let audioPath: string;
+  let photoId: string;
+  let photoPath: string;
 
   beforeAll(async () => {
     [a, b] = await Promise.all([createTestUser("a"), createTestUser("b")]);
@@ -66,10 +68,35 @@ describe("row level security between two accounts", () => {
       .single();
     if (captureError) throw captureError;
     captureId = capture.id;
+
+    photoPath = `${a.id}/${randomUUID()}.jpg`;
+    const { error: photoUploadError } = await a.client.storage
+      .from("photos")
+      .upload(photoPath, new Blob([new Uint8Array(16)], { type: "image/jpeg" }), {
+        contentType: "image/jpeg",
+      });
+    if (photoUploadError) throw photoUploadError;
+
+    const { data: photo, error: photoError } = await a.client
+      .from("photos")
+      .insert({
+        person_id: personId,
+        kind: "person",
+        storage_path: photoPath,
+        mime: "image/jpeg",
+        lat: 25.08,
+        lng: 55.14,
+        location_source: "device",
+      })
+      .select("id")
+      .single();
+    if (photoError) throw photoError;
+    photoId = photo.id;
   });
 
   afterAll(async () => {
     if (audioPath) await admin.storage.from("audio").remove([audioPath]);
+    if (photoPath) await admin.storage.from("photos").remove([photoPath]);
     // Deleting the auth user cascades to profiles, people and captures.
     await Promise.all([a, b].filter(Boolean).map((u) => admin.auth.admin.deleteUser(u.id)));
   });
@@ -158,6 +185,25 @@ describe("row level security between two accounts", () => {
         contentType: "audio/webm",
       });
     expect(error).not.toBeNull();
+  });
+
+  it("hides another user's photos and photo files", async () => {
+    const rows = await b.client.from("photos").select("*").eq("id", photoId);
+    const download = await b.client.storage.from("photos").download(photoPath);
+    const signed = await b.client.storage.from("photos").createSignedUrl(photoPath, 60);
+    expect(rows.data).toEqual([]);
+    expect(download.data).toBeNull();
+    expect(signed.data).toBeNull();
+  });
+
+  it("blocks linking your own rows to another user's person", async () => {
+    // Owned by B, but pointing at A's person: the same-user foreign keys refuse it.
+    const photo = await b.client
+      .from("photos")
+      .insert({ person_id: personId, storage_path: `${b.id}/x.jpg`, mime: "image/jpeg" });
+    const capture = await b.client.from("captures").insert({ person_id: personId });
+    expect(photo.error).not.toBeNull();
+    expect(capture.error).not.toBeNull();
   });
 
   it("gives clients no access to invite codes", async () => {
