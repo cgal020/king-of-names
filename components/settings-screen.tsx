@@ -132,7 +132,12 @@ export function SettingsScreen() {
           <p>
             To fill in a profile, the recording is sent to OpenAI to be transcribed, the transcript is sent to
             Anthropic to pick out names and details, and the location is sent to Mapbox to find the place name.
-            Nothing else about you is sent to them.
+          </p>
+          <p>
+            Photos are stored the same way. Photos of business cards are sent to Anthropic to read the details off
+            the card; other photos, including photos of people, are never sent to an AI. When you use Ask AI, your
+            question and the notes needed to answer it are sent to Anthropic. Nothing else about you is sent to
+            these providers.
           </p>
           <p>You can export everything or delete your account at any time.</p>
         </div>

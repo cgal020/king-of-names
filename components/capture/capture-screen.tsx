@@ -4,18 +4,23 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
+  CameraIcon,
   CheckIcon,
   ChevronRightIcon,
   MapPinIcon,
   MapPinOffIcon,
   PencilLineIcon,
+  ScanLineIcon,
   SettingsIcon,
 } from "lucide-react";
 import { RecordButton } from "@/components/capture/record-button";
+import { usePhotoPicker } from "@/components/photos/photo-picker";
+import { usePhotosFor } from "@/components/photos/photo-store";
 import { buttonVariants } from "@/components/ui/button";
 import { appConfig } from "@/lib/config";
 import { formatDuration } from "@/lib/format";
-import { mockCurrentLocation, mockPendingReview } from "@/lib/mock/people";
+import { mockCurrentLocation, mockDraft, mockPendingReview } from "@/lib/mock/people";
+import type { Photo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const MAX_SECONDS = 90;
@@ -35,6 +40,8 @@ export function CaptureScreen() {
   const [location, setLocation] = useState<LocationState>("idle");
   const [step, setStep] = useState(0);
   const startedAt = useRef(0);
+  const picker = usePhotoPicker();
+  const draftPhotos = usePhotosFor({ captureId: mockDraft.captureId });
 
   // Timer, simulated mic level and the 90 second auto-stop.
   useEffect(() => {
@@ -104,6 +111,7 @@ export function CaptureScreen() {
             <p className="mt-2 max-w-[34ch] text-[0.95rem] text-muted-foreground">
               Say their name, where you are, and anything worth remembering.
             </p>
+            {draftPhotos.length > 0 && <DraftPhotos photos={draftPhotos} />}
           </>
         )}
       </section>
@@ -118,13 +126,30 @@ export function CaptureScreen() {
           )}
         </div>
 
-        <RecordButton
-          recording={phase === "recording"}
-          level={level}
-          progress={Math.min(1, elapsed / MAX_SECONDS)}
-          disabled={phase === "processing"}
-          onPress={handlePress}
-        />
+        {picker.input}
+        <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
+          <div className="flex justify-center">
+            {phase === "idle" && (
+              <SideAction href="/capture/card" label="Card" icon={<ScanLineIcon />} />
+            )}
+          </div>
+          <RecordButton
+            recording={phase === "recording"}
+            level={level}
+            progress={Math.min(1, elapsed / MAX_SECONDS)}
+            disabled={phase === "processing"}
+            onPress={handlePress}
+          />
+          <div className="flex justify-center">
+            {phase !== "processing" && (
+              <SideAction
+                label="Photo"
+                icon={<CameraIcon />}
+                onClick={() => picker.open({ captureId: mockDraft.captureId, kind: "moment", camera: true })}
+              />
+            )}
+          </div>
+        </div>
 
         <div className="mt-4 flex h-11 items-center">
           {phase === "idle" ? (
@@ -141,6 +166,53 @@ export function CaptureScreen() {
         </div>
       </section>
     </main>
+  );
+}
+
+function SideAction({
+  label,
+  icon,
+  href,
+  onClick,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  href?: string;
+  onClick?: () => void;
+}) {
+  const className =
+    "flex flex-col items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground";
+  const circle = (
+    <span className="grid size-14 place-items-center rounded-full border bg-background shadow-xs transition-transform duration-150 active:scale-95 [&_svg]:size-5.5">
+      {icon}
+    </span>
+  );
+  return href ? (
+    <Link href={href} className={className}>
+      {circle}
+      {label}
+    </Link>
+  ) : (
+    <button type="button" onClick={onClick} className={className}>
+      {circle}
+      {label}
+    </button>
+  );
+}
+
+function DraftPhotos({ photos }: { photos: Photo[] }) {
+  return (
+    <Link href="/capture/review" className="mt-5 flex items-center gap-3">
+      <span className="flex -space-x-2">
+        {photos.slice(0, 4).map((p) => (
+          // eslint-disable-next-line @next/next/no-img-element -- object URLs
+          <img key={p.id} src={p.url} alt="" className="size-10 rounded-lg border-2 border-background object-cover" />
+        ))}
+      </span>
+      <span className="text-sm text-muted-foreground">
+        {photos.length === 1 ? "1 photo" : `${photos.length} photos`} added to this note
+      </span>
+    </Link>
   );
 }
 

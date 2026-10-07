@@ -16,6 +16,7 @@ export default function ReviewPage() {
       <PersonForm
         mode="review"
         initial={draft.person}
+        captureId={draft.captureId}
         transcript={draft.transcript}
         durationSeconds={draft.durationSeconds}
         nameConfidence={draft.nameConfidence}

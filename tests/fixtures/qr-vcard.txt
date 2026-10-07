@@ -1,0 +1,11 @@
+BEGIN:VCARD
+VERSION:3.0
+N:Haddad;Sofia;;;
+FN:Sofia Haddad
+ORG:Gulf Freight Partners
+TITLE:Head of Partnerships
+TEL;TYPE=CELL:+971 55 555 0142
+EMAIL:sofia@gulffreight.example
+URL:https://www.linkedin.com/in/sofia-haddad-example
+BDAY:--0303
+END:VCARD

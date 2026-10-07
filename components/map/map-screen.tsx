@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon, LocateFixedIcon, SettingsIcon, XIcon } from "lucide-react";
+import { PersonAvatar } from "@/components/photos/person-avatar";
+import { useAvatar } from "@/components/photos/photo-store";
 import { buttonVariants } from "@/components/ui/button";
 import { distanceKm, formatDistance, formatMetDate } from "@/lib/format";
 import { mockCurrentLocation } from "@/lib/mock/people";
@@ -251,12 +253,7 @@ export function MapScreen({ people }: { people: Person[] }) {
                   )}
                   style={pos}
                 >
-                  <span
-                    className={cn(
-                      "rounded-full border-[3px] border-background bg-primary shadow-md transition-[width,height] duration-150",
-                      selected ? "size-6" : "size-4",
-                    )}
-                  />
+                  <PinDot personId={p.id} selected={selected} />
                   {selected && (
                     <span className="pointer-events-none absolute bottom-full -mb-1 rounded-md bg-foreground px-2 py-0.5 text-xs font-medium whitespace-nowrap text-background">
                       {p.full_name}
@@ -500,11 +497,38 @@ function NearMe({
   );
 }
 
+// A photo pin when the person has a profile picture, otherwise a dot.
+function PinDot({ personId, selected }: { personId: string; selected: boolean }) {
+  const avatar = useAvatar(personId);
+  if (avatar) {
+    return (
+      <span
+        className={cn(
+          "overflow-hidden rounded-full border-[3px] border-background bg-muted shadow-md transition-[width,height] duration-150",
+          selected ? "size-10" : "size-8",
+        )}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- object and signed URLs */}
+        <img src={avatar.url} alt="" className="size-full object-cover" />
+      </span>
+    );
+  }
+  return (
+    <span
+      className={cn(
+        "rounded-full border-[3px] border-background bg-primary shadow-md transition-[width,height] duration-150",
+        selected ? "size-6" : "size-4",
+      )}
+    />
+  );
+}
+
 function PersonCard({ person: p, onClose }: { person: Person; onClose: () => void }) {
   return (
     <div>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 pt-1">
+        <PersonAvatar personId={p.id} name={p.full_name} size={52} className="mt-1" />
+        <div className="min-w-0 flex-1 pt-1">
           <h1 className="text-2xl font-semibold tracking-tight">{p.full_name}</h1>
           <p className="mt-1 text-[0.95rem] text-muted-foreground">
             {[p.place_name, p.city].filter(Boolean).join(", ")} &middot; {formatMetDate(p.met_at, p.met_timezone)}

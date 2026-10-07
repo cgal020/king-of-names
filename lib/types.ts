@@ -42,3 +42,25 @@ export type Draft = {
   nameConfidence: Confidence;
   additionalPeople: string[];
 };
+
+export type PhotoKind = "person" | "card" | "moment";
+
+// Mirrors the `photos` table, plus a display URL (a short-lived signed URL in
+// the real app).
+export type Photo = {
+  id: string;
+  person_id: string | null;
+  capture_id: string | null;
+  kind: PhotoKind;
+  url: string;
+  width: number | null;
+  height: number | null;
+  taken_at: string | null;
+  taken_timezone: string | null;
+  lat: number | null;
+  lng: number | null;
+  location_accuracy_m: number | null;
+  location_source: "device" | "photo" | "none";
+  // Reverse-geocoded label for display, e.g. "Dubai Marina, Dubai".
+  place_label: string | null;
+};

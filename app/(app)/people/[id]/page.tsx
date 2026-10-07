@@ -4,6 +4,8 @@ import { BellIcon, PhoneIcon } from "lucide-react";
 import { DeletePersonButton } from "@/components/delete-person-button";
 import { MiniMap } from "@/components/map/mini-map";
 import { OriginalNote } from "@/components/original-note";
+import { PersonAvatar } from "@/components/photos/person-avatar";
+import { PersonPhotos } from "@/components/photos/person-photos";
 import { ScreenHeader } from "@/components/screen-header";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
@@ -42,6 +44,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       />
 
       <header className="mt-3">
+        <PersonAvatar personId={p.id} name={p.full_name} size={72} className="mb-4 text-xl" />
         <h1 className="text-[2.5rem] leading-[1.1] font-semibold tracking-tight">{p.full_name}</h1>
         {work && <p className="mt-2 text-lg">{work}</p>}
         <p className="mt-1 text-[0.95rem] text-muted-foreground">
@@ -75,6 +78,11 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           <p className="max-w-[65ch] text-[1.0625rem] leading-relaxed text-pretty">{p.notes}</p>
         </section>
       )}
+
+      <section className="mt-8">
+        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Photos</h2>
+        <PersonPhotos personId={p.id} />
+      </section>
 
       {details.length > 0 && (
         <dl className="mt-8 divide-y border-y">

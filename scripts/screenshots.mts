@@ -82,9 +82,82 @@ const SHOTS: Shot[] = [
     },
   },
   { name: "17-settings-full", path: "/settings", fullPage: true },
+  { name: "18-card-scanner", path: "/capture/card" },
+  {
+    name: "19-card-result-qr",
+    path: "/capture/card",
+    act: async (p) => {
+      // A business card QR holding a vCard (tests/fixtures/qr-vcard.txt).
+      await p.locator("input[type=file]").setInputFiles("tests/fixtures/qr-vcard.png");
+      await p.getByText("Read from the QR code").waitFor();
+    },
+  },
+  {
+    name: "20-review-from-card-full",
+    path: "/capture/card",
+    fullPage: true,
+    act: async (p) => {
+      await p.locator("input[type=file]").setInputFiles("tests/fixtures/qr-vcard.png");
+      await p.getByRole("button", { name: "Add to note" }).click();
+      await p.waitForURL("**/capture/review");
+      await p.waitForTimeout(400);
+    },
+  },
+  {
+    name: "21-photo-viewer",
+    path: "/people/zayed-khoury",
+    act: async (p) => {
+      await p.getByRole("button", { name: /^Card photo/ }).click();
+      await p.waitForTimeout(300);
+    },
+  },
+  {
+    name: "22-ask-suggestions",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("searchbox", { name: "Search people" }).focus();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "23-ask-typed",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("searchbox", { name: "Search people" }).fill("Who did I meet in Dubai who works in shipping?");
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "24-ask-thinking",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("searchbox", { name: "Search people" }).fill("Who do I know in Bangkok?");
+      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.waitForTimeout(300);
+    },
+  },
+  {
+    name: "25-ask-answer",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("searchbox", { name: "Search people" }).fill("Who do I know in Bangkok?");
+      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.waitForTimeout(1300);
+    },
+  },
 ];
 
-const DARK = new Set(["01-capture", "02-capture-recording", "04-review", "07-people", "09-profile-full", "13-map-cities", "14-map-city"]);
+const DARK = new Set([
+  "01-capture",
+  "02-capture-recording",
+  "04-review",
+  "07-people",
+  "09-profile-full",
+  "13-map-cities",
+  "14-map-city",
+  "19-card-result-qr",
+  "25-ask-answer",
+]);
 
 await mkdir(OUT, { recursive: true });
 const browser = await chromium.launch({ channel: "chrome" });

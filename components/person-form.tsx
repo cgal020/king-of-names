@@ -1,16 +1,20 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CircleAlertIcon, PlusIcon, UsersIcon } from "lucide-react";
+import { CircleAlertIcon, PlusIcon, ScanTextIcon, UsersIcon } from "lucide-react";
+import { useCardResult } from "@/components/capture/card-store";
 import { MiniMap } from "@/components/map/mini-map";
 import { OriginalNote } from "@/components/original-note";
+import { PhotoStrip } from "@/components/photos/photo-strip";
+import { usePhotos, usePhotosFor } from "@/components/photos/photo-store";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { mergeCard, type CardField } from "@/lib/cards/merge";
 import { formatMetDate, monthName } from "@/lib/format";
 import { mockCities, mockPeople } from "@/lib/mock/people";
 import { findSimilar } from "@/lib/similar";
@@ -23,12 +27,14 @@ type PersonFormProps = {
   mode: "review" | "new" | "edit";
   initial: PersonInput;
   personId?: string;
+  // The capture this draft came from; photos taken for it hang off this id.
+  captureId?: string;
   transcript?: string | null;
   durationSeconds?: number | null;
   nameConfidence?: Confidence;
 };
 
-type Section = "phone" | "birthday" | "followUp" | "work" | "email";
+type Section = "phone" | "birthday" | "followUp" | "work" | "email" | "web" | "address";
 
 const SECTION_LABELS: Record<Section, string> = {
   phone: "Phone",
@@ -36,6 +42,8 @@ const SECTION_LABELS: Record<Section, string> = {
   followUp: "Follow-up",
   work: "Company & role",
   email: "Email",
+  web: "Website",
+  address: "Address",
 };
 
 // "2026-10-06T21:42" in the timezone the person was met in.
@@ -66,15 +74,27 @@ export function PersonForm({
   mode,
   initial,
   personId,
+  captureId,
   transcript,
   durationSeconds,
   nameConfidence = "high",
 }: PersonFormProps) {
   const router = useRouter();
-  const [values, setValues] = useState(() => ({
-    ...initial,
-    met_at_local: toLocalInput(initial.met_at, initial.met_timezone),
-  }));
+  const draftId = useId();
+  const photoTarget =
+    mode === "edit" ? { personId } : { captureId: captureId ?? `new${draftId}` };
+  const photos = usePhotosFor(photoTarget);
+  const { attachDraft } = usePhotos();
+  const { result: card, setResult: setCard } = useCardResult();
+  // Details from a scanned business card are merged into the draft once.
+  const [merged] = useState(() =>
+    mode === "review" && card ? mergeCard(initial, card.details, nameConfidence) : null,
+  );
+  const fromCard = (field: CardField) => Boolean(merged?.fromCard.has(field));
+  const [values, setValues] = useState(() => {
+    const start = merged?.person ?? initial;
+    return { ...start, met_at_local: toLocalInput(start.met_at, start.met_timezone) };
+  });
   const [opened, setOpened] = useState<Set<Section>>(new Set());
   const [nameTouched, setNameTouched] = useState(false);
   const [duplicateChoice, setDuplicateChoice] = useState<"new" | string>("new");
@@ -91,6 +111,8 @@ export function PersonForm({
     followUp: Boolean(values.follow_up_note || values.follow_up_date),
     work: Boolean(values.extras.company || values.extras.role),
     email: Boolean(values.extras.email),
+    web: Boolean(values.extras.website || values.extras.linkedin),
+    address: Boolean(values.extras.address),
   };
   const visible = (s: Section) => has[s] || opened.has(s);
   const hidden = (Object.keys(SECTION_LABELS) as Section[]).filter((s) => !visible(s));
@@ -103,12 +125,16 @@ export function PersonForm({
     [mode, values.full_name, personId],
   );
   const updating = duplicates.find((p) => p.id === duplicateChoice);
-  const flagName = mode === "review" && nameConfidence !== "high" && !nameTouched;
+  // A name printed on a scanned card settles any doubt about the spoken one.
+  const cardHasName = Boolean(merged && card?.details.full_name);
+  const flagName = mode === "review" && nameConfidence !== "high" && !nameTouched && !cardHasName;
   const canSave = values.full_name.trim().length > 0;
 
   function save() {
     if (!canSave) return;
     const name = values.full_name.trim();
+    if (photoTarget.captureId) attachDraft(photoTarget.captureId, updating?.id ?? personId ?? null);
+    setCard(null);
     toast.success(updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
       description: "Preview only. Nothing was stored.",
     });
@@ -116,6 +142,8 @@ export function PersonForm({
   }
 
   function discard() {
+    if (photoTarget.captureId) attachDraft(photoTarget.captureId, null);
+    setCard(null);
     toast("Note discarded", { description: "The recording would be deleted." });
     router.push("/capture");
   }
@@ -133,6 +161,7 @@ export function PersonForm({
         <div>
           <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium text-muted-foreground">
             Name
+            {fromCard("full_name") && <FromCard />}
           </label>
           <Input
             id="full_name"
@@ -251,6 +280,11 @@ export function PersonForm({
           />
         </Field>
 
+        <div>
+          <h2 className="mb-1.5 text-sm font-medium text-muted-foreground">Photos</h2>
+          <PhotoStrip photos={photos} target={photoTarget} />
+        </div>
+
         {visible("followUp") && (
           <fieldset className="space-y-2">
             <legend className="mb-1.5 text-sm font-medium text-muted-foreground">Follow-up</legend>
@@ -272,7 +306,7 @@ export function PersonForm({
         )}
 
         {visible("phone") && (
-          <Field label="Phone" htmlFor="phone">
+          <Field label="Phone" htmlFor="phone" fromCard={fromCard("phone")}>
             <Input
               id="phone"
               type="tel"
@@ -286,7 +320,10 @@ export function PersonForm({
 
         {visible("birthday") && (
           <fieldset>
-            <legend className="mb-1.5 text-sm font-medium text-muted-foreground">Birthday</legend>
+            <legend className="mb-1.5 text-sm font-medium text-muted-foreground">
+              Birthday
+              {fromCard("birthday") && <FromCard />}
+            </legend>
             <div className="grid grid-cols-[1fr_2fr_1.3fr] gap-2">
               <select
                 aria-label="Birthday day"
@@ -331,7 +368,7 @@ export function PersonForm({
 
         {visible("work") && (
           <div className="grid grid-cols-2 gap-2">
-            <Field label="Company" htmlFor="company">
+            <Field label="Company" htmlFor="company" fromCard={fromCard("company")}>
               <Input
                 id="company"
                 value={values.extras.company ?? ""}
@@ -339,7 +376,7 @@ export function PersonForm({
                 className="h-11 rounded-xl px-3.5"
               />
             </Field>
-            <Field label="Role" htmlFor="role">
+            <Field label="Role" htmlFor="role" fromCard={fromCard("role")}>
               <Input
                 id="role"
                 value={values.extras.role ?? ""}
@@ -351,13 +388,53 @@ export function PersonForm({
         )}
 
         {visible("email") && (
-          <Field label="Email" htmlFor="email">
+          <Field label="Email" htmlFor="email" fromCard={fromCard("email")}>
             <Input
               id="email"
               type="email"
               inputMode="email"
               value={values.extras.email ?? ""}
               onChange={(e) => setExtra("email", e.target.value)}
+              className="h-11 rounded-xl px-3.5"
+            />
+          </Field>
+        )}
+
+        {visible("web") && (
+          <div className="space-y-4">
+            {(values.extras.website || opened.has("web") || !values.extras.linkedin) && (
+              <Field label="Website" htmlFor="website" fromCard={fromCard("website")}>
+                <Input
+                  id="website"
+                  type="url"
+                  inputMode="url"
+                  value={values.extras.website ?? ""}
+                  onChange={(e) => setExtra("website", e.target.value)}
+                  className="h-11 rounded-xl px-3.5"
+                />
+              </Field>
+            )}
+            {(values.extras.linkedin || fromCard("linkedin")) && (
+              <Field label="LinkedIn" htmlFor="linkedin" fromCard={fromCard("linkedin")}>
+                <Input
+                  id="linkedin"
+                  type="url"
+                  inputMode="url"
+                  value={values.extras.linkedin ?? ""}
+                  onChange={(e) => setExtra("linkedin", e.target.value)}
+                  className="h-11 rounded-xl px-3.5"
+                />
+              </Field>
+            )}
+          </div>
+        )}
+
+        {visible("address") && (
+          <Field label="Address" htmlFor="address" fromCard={fromCard("address")}>
+            <Input
+              id="address"
+              value={values.extras.address ?? ""}
+              onChange={(e) => setExtra("address", e.target.value)}
               className="h-11 rounded-xl px-3.5"
             />
           </Field>
@@ -417,11 +494,31 @@ export function PersonForm({
   );
 }
 
-function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: React.ReactNode }) {
+function FromCard() {
+  return (
+    <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+      <ScanTextIcon className="size-3" aria-hidden />
+      From card
+    </span>
+  );
+}
+
+function Field({
+  label,
+  htmlFor,
+  fromCard,
+  children,
+}: {
+  label: string;
+  htmlFor: string;
+  fromCard?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div>
       <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-muted-foreground">
         {label}
+        {fromCard && <FromCard />}
       </label>
       {children}
     </div>

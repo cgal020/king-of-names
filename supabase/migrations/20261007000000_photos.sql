@@ -14,6 +14,8 @@ create table public.photos (
   height integer check (height > 0),
   bytes integer check (bytes > 0),
   taken_at timestamptz,
+  -- IANA zone of the device when the photo was taken, so times show as local.
+  taken_timezone text,
   lat double precision check (lat between -90 and 90),
   lng double precision check (lng between -180 and 180),
   location_accuracy_m real,
