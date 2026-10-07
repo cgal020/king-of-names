@@ -7,6 +7,7 @@ import { AskPanel } from "@/components/ask-panel";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { looksLikeQuestion, SUGGESTED_QUESTIONS } from "@/lib/ask/question";
+import { knownTags, relationshipLabel, type Relationship } from "@/lib/tags";
 import { firstLine, formatMetDate, formatMonthGroup } from "@/lib/format";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,8 @@ export function PeopleList({ people }: { people: Person[] }) {
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
   const [when, setWhen] = useState<When>("");
+  const [type, setType] = useState("");
+  const [tag, setTag] = useState("");
   const [asked, setAsked] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [listening, setListening] = useState(false);
@@ -65,6 +68,7 @@ export function PeopleList({ people }: { people: Person[] }) {
 
   const cities = useMemo(() => uniqueSorted(people.map((p) => p.city)), [people]);
   const countries = useMemo(() => uniqueSorted(people.map((p) => p.country)), [people]);
+  const tags = useMemo(() => knownTags(people).filter((t) => people.some((p) => p.tags.includes(t))), [people]);
 
   const results = useMemo(() => {
     const terms = fold(query).split(/\s+/).filter(Boolean);
@@ -73,13 +77,16 @@ export function PeopleList({ people }: { people: Person[] }) {
         if (city && p.city !== city) return false;
         if (country && p.country !== country) return false;
         if (!matchesWhen(p.met_at, when)) return false;
+        // "Both" counts as business and as personal.
+        if (type && p.relationship !== type && p.relationship !== "both") return false;
+        if (tag && !p.tags.includes(tag)) return false;
         const haystack = fold(
-          [p.full_name, p.notes, p.where_met_text, p.place_name, p.city].filter(Boolean).join(" "),
+          [p.full_name, p.notes, p.where_met_text, p.place_name, p.city, ...p.tags].filter(Boolean).join(" "),
         );
         return terms.every((t) => haystack.includes(t));
       })
       .sort((a, b) => b.met_at.localeCompare(a.met_at));
-  }, [people, query, city, country, when]);
+  }, [people, query, city, country, when, type, tag]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Person[]>();
@@ -90,7 +97,7 @@ export function PeopleList({ people }: { people: Person[] }) {
     return [...map.entries()];
   }, [results]);
 
-  const filtered = Boolean(query || city || country || when);
+  const filtered = Boolean(query || city || country || when || type || tag);
 
   if (people.length === 0) return <EmptyState />;
 
@@ -152,10 +159,26 @@ export function PeopleList({ people }: { people: Person[] }) {
         {focused && !query && !asked && <SuggestedQuestions onAsk={ask} />}
         {!asked && !(focused && !query) && (
           <div className="mt-2.5 flex gap-2 overflow-x-auto [scrollbar-width:none]">
-            <FilterChip label="City" value={city} onChange={setCity} options={cities} />
-            <FilterChip label="Country" value={country} onChange={setCountry} options={countries} />
+            <FilterChip
+              label="Type"
+              allLabel="Business and personal"
+              value={type}
+              onChange={setType}
+              options={["business", "personal"]}
+              optionLabel={(v) => relationshipLabel(v as Relationship) ?? v}
+            />
+            <FilterChip label="Tag" allLabel="All tags" value={tag} onChange={setTag} options={tags} />
+            <FilterChip label="City" allLabel="All cities" value={city} onChange={setCity} options={cities} />
+            <FilterChip
+              label="Country"
+              allLabel="All countries"
+              value={country}
+              onChange={setCountry}
+              options={countries}
+            />
             <FilterChip
               label="Any time"
+              allLabel="Any time"
               value={when}
               onChange={(v) => setWhen(v as When)}
               options={WHEN_OPTIONS.slice(1).map((o) => o.value)}
@@ -209,6 +232,8 @@ export function PeopleList({ people }: { people: Person[] }) {
                         setCity("");
                         setCountry("");
                         setWhen("");
+                        setType("");
+                        setTag("");
                       }}
                       className="mt-4 h-11 rounded-xl px-4 text-[0.95rem] font-medium text-primary"
                     >
@@ -282,12 +307,15 @@ function PersonRow({ person: p }: { person: Person }) {
 
 function FilterChip({
   label,
+  allLabel,
   value,
   onChange,
   options,
   optionLabel = (v) => v,
 }: {
   label: string;
+  // The "no filter" option, e.g. "All cities".
+  allLabel: string;
   value: string;
   onChange: (value: string) => void;
   options: string[];
@@ -309,7 +337,7 @@ function FilterChip({
         aria-label={label}
         className="absolute inset-0 cursor-pointer appearance-none opacity-0"
       >
-        <option value="">{label === "Any time" ? "Any time" : `All ${label.toLowerCase()}s`}</option>
+        <option value="">{allLabel}</option>
         {options.map((o) => (
           <option key={o} value={o}>
             {optionLabel(o)}

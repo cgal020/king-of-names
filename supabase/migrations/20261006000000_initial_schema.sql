@@ -70,6 +70,18 @@ create trigger on_auth_user_created
 -- people
 -------------------------------------------------------------------------------
 
+-- array_to_string is only "stable", so generated columns cannot call it
+-- directly. Joining a text array is deterministic, so this wrapper is safe.
+create or replace function public.tags_text(tags text[])
+returns text
+language sql
+immutable
+parallel safe
+set search_path = ''
+as $$
+  select coalesce(pg_catalog.array_to_string(tags, ' '), '')
+$$;
+
 create table public.people (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references public.profiles (id) on delete cascade,
@@ -92,6 +104,11 @@ create table public.people (
   follow_up_note text,
   follow_up_date date,
   extras jsonb not null default '{}'::jsonb,
+  -- Business, personal or both; suggested by the AI, confirmed by the user.
+  relationship text check (relationship in ('business', 'personal', 'both')),
+  -- How they could help, e.g. {Investor, Logistics}. Free text, deduplicated
+  -- case-insensitively by the app.
+  tags text[] not null default '{}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   -- Lowercased text the search box matches against with ilike.
@@ -101,7 +118,8 @@ create table public.people (
       coalesce(notes, '') || ' ' ||
       coalesce(where_met_text, '') || ' ' ||
       coalesce(place_name, '') || ' ' ||
-      coalesce(city, '')
+      coalesce(city, '') || ' ' ||
+      public.tags_text(tags)
     )
   ) stored,
   constraint lat_lng_together check ((lat is null) = (lng is null)),
@@ -112,6 +130,7 @@ create table public.people (
 create index people_user_city_idx on public.people (user_id, city);
 create index people_user_met_at_idx on public.people (user_id, met_at desc);
 create index people_search_trgm_idx on public.people using gin (search_text extensions.gin_trgm_ops);
+create index people_tags_idx on public.people using gin (tags);
 
 create trigger people_set_updated_at
   before update on public.people

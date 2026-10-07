@@ -137,6 +137,31 @@ const SHOTS: Shot[] = [
     },
   },
   {
+    name: "26-review-tags",
+    path: "/capture/review",
+    act: async (p) => {
+      await p.getByRole("group", { name: "How they could help" }).scrollIntoViewIfNeeded();
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "27-people-tag-filter",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("combobox", { name: "Tag" }).selectOption("Investor");
+      await p.waitForTimeout(200);
+    },
+  },
+  {
+    name: "28-ask-investors",
+    path: "/people",
+    act: async (p) => {
+      await p.getByRole("searchbox", { name: "Search people" }).fill("Who are my investors?");
+      await p.getByRole("button", { name: /^Ask AI/ }).click();
+      await p.waitForTimeout(1300);
+    },
+  },
+  {
     name: "25-ask-answer",
     path: "/people",
     act: async (p) => {

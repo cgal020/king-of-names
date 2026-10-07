@@ -7,6 +7,7 @@ import { OriginalNote } from "@/components/original-note";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { PersonPhotos } from "@/components/photos/person-photos";
 import { ScreenHeader } from "@/components/screen-header";
+import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
 import { getMockPerson, mockNotes } from "@/lib/mock/people";
@@ -51,6 +52,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           Met {formatMetDate(p.met_at, p.met_timezone)}
           {place && <> &middot; {place}</>}
         </p>
+        <TagList relationship={p.relationship} tags={p.tags} className="mt-3" />
       </header>
 
       {p.phone && (

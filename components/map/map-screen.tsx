@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronLeftIcon, ChevronRightIcon, LocateFixedIcon, SettingsIcon, XIcon } from "lucide-react";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { useAvatar } from "@/components/photos/photo-store";
+import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { distanceKm, formatDistance, formatMetDate } from "@/lib/format";
 import { mockCurrentLocation } from "@/lib/mock/people";
@@ -543,6 +544,7 @@ function PersonCard({ person: p, onClose }: { person: Person; onClose: () => voi
           <XIcon className="size-5" />
         </button>
       </div>
+      <TagList relationship={p.relationship} tags={p.tags} className="mt-3" />
       {p.notes && <p className="mt-3 line-clamp-2 text-[0.95rem]">{p.notes}</p>}
       <Link href={`/people/${p.id}`} className={cn(buttonVariants({ size: "touch-lg" }), "mt-4 w-full")}>
         Open profile

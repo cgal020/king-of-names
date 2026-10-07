@@ -7,6 +7,13 @@ import { ChevronDownIcon, CopyIcon, DownloadIcon } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { Button } from "@/components/ui/button";
 import { appConfig } from "@/lib/config";
+import { mockPeople } from "@/lib/mock/people";
+import { knownTags } from "@/lib/tags";
+
+// Tags in use with how many people carry each.
+const tagCounts = knownTags(mockPeople)
+  .map((tag) => ({ tag, count: mockPeople.filter((p) => p.tags.includes(tag)).length }))
+  .filter((t) => t.count > 0);
 
 const SAMPLE_CODES = [
   { code: "M4QK-7XRT-9PWD", usedBy: "sarah_k", usedAt: "12 Sep 2026" },
@@ -81,6 +88,24 @@ export function SettingsScreen() {
         >
           New invite code
         </Button>
+      </Section>
+
+      <Section
+        title="Tags"
+        description="How people could help you. The AI suggests tags from your notes; you can add your own on any profile."
+      >
+        <ul className="flex flex-wrap gap-2">
+          {tagCounts.map(({ tag, count }) => (
+            <li
+              key={tag}
+              className="flex h-9 items-center gap-2 rounded-full bg-primary/10 px-3.5 text-sm font-medium text-primary"
+            >
+              {tag}
+              <span className="text-primary/70 tabular-nums">{count}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-muted-foreground">Renaming and merging tags comes with the full build.</p>
       </Section>
 
       <Section title="Install on your phone">

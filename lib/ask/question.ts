@@ -12,7 +12,8 @@ export function looksLikeQuestion(text: string) {
 
 export const SUGGESTED_QUESTIONS = [
   "Who do I know in Bangkok?",
-  "Whose birthday is this month?",
+  "Who are my investors?",
   "Which follow-ups are coming up?",
+  "Whose birthday is this month?",
   "Who works in logistics or shipping?",
 ];

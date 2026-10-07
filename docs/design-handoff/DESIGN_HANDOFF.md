@@ -79,7 +79,9 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 19 | Photo viewer | `21-photo-viewer` | Full-screen, dark; place, time and location source ("from phone GPS", "from the photo", or "No location saved in this photo"); Them / Card / Place switch; delete; previous / next. |
 | 20 | Ask AI, suggestions | `22-ask-suggestions` | Focusing the search box offers suggested questions; a mic asks by voice. |
 | 21 | Ask AI, typed question | `23-ask-typed` | When the text reads like a question, an "Ask AI" row appears above results. |
-| 22 | Ask AI, thinking / answer | `24-ask-thinking`, `25-ask-answer`, `-dark` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line), follow-up questions and a note that answers come only from your own notes. |
+| 22 | Ask AI, thinking / answer | `24-ask-thinking`, `25-ask-answer`, `-dark`, `28-ask-investors` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line), follow-up questions and a note that answers come only from your own notes. |
+| 23 | Tags on Review | `26-review-tags` | Relationship (Business / Personal / Both) and "How they could help" chips, marked "Suggested" when the AI chose them. |
+| 24 | People, tag filter | `27-people-tag-filter` | Type and Tag filter chips; here filtered to Investor. |
 
 Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
@@ -150,6 +152,20 @@ How it works now: suggested questions when the search box is focused; an "Ask AI
 
 Please design: the entry (is the search box enough, or does it need a more visible door without a fourth tab?), the voice-question state, the answer layout, no-results and error states, and how a long answer with many people stays scannable.
 
+### 7.4 Tags: relationship and how they could help
+
+Every person can carry a **relationship** (Business, Personal or Both) and any number of **"how they could help" tags**. Starter tags are Investor, Client, Partner, Supplier, Connector, Advisor, Talent and Friend, and users add their own (e.g. "Logistics", "Bangkok intro").
+
+How it works now:
+
+- The AI suggests the relationship and tags from the voice note; on Review they show a small "Suggested" label until changed (`26-review-tags`). Tap a chip's × to remove, tap "+ Tag" to add one of five offered tags, or "New tag" to type one.
+- Profiles and the map person card show the relationship as an outline pill and tags as tinted chips.
+- People has Type (Business / Personal) and Tag filters (`27-people-tag-filter`); search also matches tags.
+- Ask AI understands them: "Who are my investors?", "my personal contacts in Phuket" (`28-ask-investors`).
+- Settings lists tags in use with counts.
+
+Please design: the tag editor on Review (it must stay a glance, not a form), the tag display on profile, list rows (should rows show tags?), map pins or filters by tag, and tag management in Settings (rename, merge, delete).
+
 ## 8. Content and voice
 
 Plain, brief, warm without being cute. Second person ("Who did you just meet?"). No exclamation marks, emoji or CRM jargon (lead, contact record, pipeline, opportunity). Dates as "4 Oct 2026"; birthdays as "14 November" or "2 July 1979". Names from many languages and scripts must render well (e.g. Thai, Arabic, accented Latin).
@@ -197,6 +213,7 @@ Push notifications and reminders, vCard "save to contacts" export, WhatsApp voic
 | Photos | `components/photos/*` (strip, viewer, picker, avatar) |
 | Card scanner | `components/capture/card-scanner.tsx`, `lib/cards/*` |
 | Ask AI | `components/ask-panel.tsx`, `components/people-list.tsx` |
+| Tags | `components/tags/tag-editor.tsx`, `lib/tags.ts` |
 | Base components | `components/ui/*` (shadcn base-nova) |
 | Product context | `PRODUCT.md` |
 

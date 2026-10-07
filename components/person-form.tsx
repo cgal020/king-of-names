@@ -6,11 +6,12 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CircleAlertIcon, PlusIcon, ScanTextIcon, UsersIcon } from "lucide-react";
 import { useCardResult } from "@/components/capture/card-store";
+import { ConfirmButton } from "@/components/confirm-button";
 import { MiniMap } from "@/components/map/mini-map";
 import { OriginalNote } from "@/components/original-note";
 import { PhotoStrip } from "@/components/photos/photo-strip";
 import { usePhotos, usePhotosFor } from "@/components/photos/photo-store";
-import { ConfirmButton } from "@/components/confirm-button";
+import { TagEditor } from "@/components/tags/tag-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,6 +19,7 @@ import { mergeCard, type CardField } from "@/lib/cards/merge";
 import { formatMetDate, monthName } from "@/lib/format";
 import { mockCities, mockPeople } from "@/lib/mock/people";
 import { findSimilar } from "@/lib/similar";
+import { knownTags } from "@/lib/tags";
 import type { Confidence, Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -97,6 +99,8 @@ export function PersonForm({
   });
   const [opened, setOpened] = useState<Set<Section>>(new Set());
   const [nameTouched, setNameTouched] = useState(false);
+  const [tagsTouched, setTagsTouched] = useState(false);
+  const tagSuggestions = useMemo(() => knownTags(mockPeople), []);
   const [duplicateChoice, setDuplicateChoice] = useState<"new" | string>("new");
   const [changingCity, setChangingCity] = useState(false);
 
@@ -279,6 +283,17 @@ export function PersonForm({
             className="min-h-24 rounded-xl px-3.5 py-2.5 text-base leading-relaxed"
           />
         </Field>
+
+        <TagEditor
+          relationship={values.relationship}
+          tags={values.tags}
+          suggestions={tagSuggestions}
+          aiSuggested={mode === "review" && !tagsTouched}
+          onChange={({ relationship, tags }) => {
+            setTagsTouched(true);
+            setValues((v) => ({ ...v, relationship, tags }));
+          }}
+        />
 
         <div>
           <h2 className="mb-1.5 text-sm font-medium text-muted-foreground">Photos</h2>

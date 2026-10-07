@@ -16,7 +16,8 @@ const STOPWORDS = new Set(
     "tell give any anyone i me my mine the a an in at on of to for from with and or about know knew met meet meeting " +
     "people person someone somebody work works working worked job does do there here this that these those all " +
     "while next week month year am be been being who's whos get got lives live based see visit catch up contact call " +
-    "ping into like likes interested should would want else other others also").split(" "),
+    "ping into like likes interested should would want else other others also business personal contacts " +
+    "contact friends friend my").split(" "),
 );
 
 // Loose topic matching: a question about "shipping" should find "freight" and "logistics".
@@ -24,8 +25,8 @@ const SYNONYMS: Record<string, string[]> = {
   shipping: ["logistics", "freight", "cold-chain", "cargo", "trucks", "forwarder"],
   logistics: ["shipping", "freight", "cold-chain", "cargo", "trucks", "forwarder"],
   property: ["real estate", "property", "leasing", "hotel"],
-  investor: ["fund", "venture", "family office", "banker", "invest"],
-  investors: ["fund", "venture", "family office", "banker", "invest"],
+  investor: ["fund", "venture", "family office", "invest"],
+  investors: ["fund", "venture", "family office", "invest"],
   money: ["fund", "venture", "family office", "banker"],
   design: ["design", "studio", "architect", "fit-out"],
   hotels: ["hotel", "hospitality", "fit-out"],
@@ -49,7 +50,7 @@ function fold(text: string) {
 
 function haystack(p: Person) {
   return fold(
-    [p.notes, p.where_met_text, p.place_name, p.extras.company, p.extras.role].filter(Boolean).join(" "),
+    [p.notes, p.where_met_text, p.place_name, p.extras.company, p.extras.role, ...p.tags].filter(Boolean).join(" "),
   );
 }
 
@@ -64,8 +65,20 @@ export function mockAnswer(question: string, people: Person[], now = new Date())
   const countries = [...new Set(people.map((p) => p.country).filter((c): c is string => Boolean(c)))];
   const city = cities.find((c) => q.includes(fold(c)));
   const country = countries.find((c) => q.includes(fold(c)));
-  const inPlace = people.filter((p) => (city ? p.city === city : country ? p.country === country : true));
+  // "business contacts" / "personal friends": "both" counts for either.
+  const wantsBusiness = /\bbusiness\b/.test(q);
+  const wantsPersonal = /\b(personal|friends?)\b/.test(q) && !wantsBusiness;
+  const inPlace = people.filter(
+    (p) =>
+      (city ? p.city === city : country ? p.country === country : true) &&
+      (!wantsBusiness || p.relationship === "business" || p.relationship === "both") &&
+      (!wantsPersonal || p.relationship === "personal" || p.relationship === "both"),
+  );
   const placeName = city ?? country;
+  const kind = wantsBusiness ? "business " : wantsPersonal ? "personal " : "";
+  // "One person", "3 people", "One business contact", "3 personal contacts".
+  const count = (n: number) =>
+    kind ? `${n === 1 ? "One" : n} ${kind}contact${n === 1 ? "" : "s"}` : n === 1 ? "One person" : `${n} people`;
 
   // Birthdays
   if (/birthday|bday/.test(q)) {
@@ -167,27 +180,33 @@ export function mockAnswer(question: string, people: Person[], now = new Date())
     const hits = inPlace.filter((p) => terms.some((t) => haystack(p).includes(t)));
     return {
       answer: hits.length
-        ? `${hits.length === 1 ? "One person" : `${hits.length} people`}${placeName ? ` in ${placeName}` : ""} ${
+        ? `${count(hits.length)}${placeName ? ` in ${placeName}` : ""} ${
             hits.length === 1 ? "matches" : "match"
           }: ${names(hits)}.`
-        : `I couldn't find anyone${placeName ? ` in ${placeName}` : ""} whose notes mention ${topics.join(" or ")}.`,
-      people: hits.map((p) => ({ person: p, reason: firstLine(p.notes) })),
+        : `I couldn't find anyone${placeName ? ` in ${placeName}` : ""} whose notes or tags mention ${topics.join(" or ")}.`,
+      people: hits.map((p) => ({
+        person: p,
+        reason: [p.tags.join(", "), firstLine(p.notes)].filter(Boolean).join(" · "),
+      })),
       followUps: placeName ? [`Who else do I know in ${placeName}?`] : ["Who do I know in Dubai?"],
     };
   }
 
-  // Just a place: "who do I know in Bangkok?"
-  if (placeName) {
+  // Just a place and/or a relationship: "who do I know in Bangkok?", "my personal contacts"
+  if (placeName || kind) {
     const sorted = [...inPlace].sort(
       (a, b) => Number(Boolean(b.follow_up_note)) - Number(Boolean(a.follow_up_note)) || b.met_at.localeCompare(a.met_at),
     );
     const withFollowUp = sorted.filter((p) => p.follow_up_note);
+    const where = placeName ? ` in ${placeName}` : "";
     return {
       answer: sorted.length
-        ? `You know ${sorted.length === 1 ? "one person" : `${sorted.length} people`} in ${placeName}: ${names(sorted)}.${
+        ? `You know ${count(sorted.length).replace(/^One/, "one")}${where}: ${names(sorted)}.${
             withFollowUp.length ? ` ${withFollowUp[0].full_name} has an open follow-up.` : ""
           }`
-        : `You haven't met anyone in ${placeName} yet.`,
+        : kind
+          ? `You have no ${kind}contacts${where} yet.`
+          : `You haven't met anyone${where} yet.`,
       people: sorted.map((p) => ({ person: p, reason: firstLine(p.notes) })),
       followUps: [`Whose birthday is this month?`, `Which follow-ups are coming up?`],
     };

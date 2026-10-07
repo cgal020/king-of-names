@@ -4,8 +4,29 @@ import type { Draft, Person } from "@/lib/types";
 
 type Seed = Partial<Person> & Pick<Person, "id" | "full_name" | "met_at">;
 
+// Relationship and "how they could help" tags for each sample person.
+const TAGGING: Record<string, Pick<Person, "relationship" | "tags">> = {
+  "zayed-khoury": { relationship: "business", tags: ["Connector", "Art"] },
+  "priya-raman": { relationship: "business", tags: ["Partner", "Design"] },
+  "james-oconnell": { relationship: "both", tags: ["Advisor", "Aviation"] },
+  "lachlan-brooks": { relationship: "business", tags: ["Client", "Apparel"] },
+  "mei-lin-chua": { relationship: "business", tags: ["Investor"] },
+  "nok-srisawat": { relationship: "business", tags: ["Partner", "Hospitality"] },
+  "thanakorn-wongsakul": { relationship: "business", tags: ["Supplier", "Logistics"] },
+  "aleksandra-nowak": { relationship: "personal", tags: ["Friend", "Wellness"] },
+  "tom-fitzgerald": { relationship: "business", tags: ["Client", "Hospitality"] },
+  "charlotte-nguyen": { relationship: "business", tags: ["Advisor", "Legal"] },
+  "kenji-watanabe": { relationship: "personal", tags: ["Friend", "Golf"] },
+  "isabella-rossi": { relationship: "personal", tags: ["Friend"] },
+  "omar-al-mansouri": { relationship: "business", tags: ["Investor", "Connector"] },
+  "sofia-hadad": { relationship: "business", tags: ["Logistics"] },
+  "hannah-clarke": { relationship: "business", tags: ["Connector", "Banking"] },
+  "daniel-reyes": { relationship: "both", tags: ["Logistics", "Friend"] },
+};
+
 function person(seed: Seed): Person {
   return {
+    ...(TAGGING[seed.id] ?? { relationship: null, tags: [] }),
     met_timezone: null,
     lat: null,
     lng: null,
@@ -260,6 +281,9 @@ export const mockDraft: Draft = {
     follow_up_note: "Send her the deck",
     follow_up_date: "2026-10-09",
     extras: { role: "Partnerships" },
+    // Suggested by the AI from "runs partnerships for a freight company".
+    relationship: "business",
+    tags: ["Logistics", "Partner"],
   },
 };
 

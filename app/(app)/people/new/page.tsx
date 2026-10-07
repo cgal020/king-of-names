@@ -24,6 +24,8 @@ export default function NewPersonPage() {
     follow_up_note: null,
     follow_up_date: null,
     extras: {},
+    relationship: null,
+    tags: [],
   };
 
   return (

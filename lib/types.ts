@@ -20,6 +20,8 @@ export type Person = {
   follow_up_note: string | null;
   follow_up_date: string | null;
   extras: PersonExtras;
+  relationship: "business" | "personal" | "both" | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 };
