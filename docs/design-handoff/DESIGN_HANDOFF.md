@@ -5,12 +5,12 @@ Attach the `screens/` folder next to this file; every screen below has a screens
 
 ## 1. What we need from you
 
-Improve the UI and UX of a working mobile web app before we wire it to the real backend. The screens exist and run with sample data; we want them to feel calm, premium and fast, and we need designs for the new features in section 7 that are not built yet.
+Improve the UI and UX of a working mobile web app before we wire it to the real backend. Every screen exists and runs with sample data, including the newer photo, business card and Ask AI features; we want it all to feel calm, premium and fast.
 
 Please deliver:
 
 1. **Revised screens** for every screen in section 5 (light and dark), at 390 × 844.
-2. **Designs for the new features** in section 7 (photos, business card scan and QR, Ask AI) and the not-yet-designed states in section 6.
+2. **Refined designs for the newer features** in section 7 (photos, business card scanning, Ask AI) and designs for the not-yet-designed states in section 6.
 3. **Tokens** we can drop into code: colour roles in OKLCH for light and dark, type scale, spacing, radii, shadows, motion durations and easings (format in section 9).
 4. **Component specs** for anything new or changed, with every state (default, pressed, focus, disabled, loading, error).
 5. **A short rationale** per screen: what changed and why, tied to the principles in section 3.
@@ -73,6 +73,15 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 13 | Map, person card | `15-map-person-card` | Tap a pin: name label on the map, panel shows name, place, date, notes and "Open profile". |
 | 14 | Map, near me | `16-map-near-me` | Radius circle around the current position, 1 / 5 / 25 km segmented control, list sorted by distance. |
 | 15 | **Settings** | `17-settings-full` | Account; invite codes (copy, new code); install steps for iPhone and Android; export CSV/JSON; plain-language privacy note; sign out; delete account. |
+| 16 | **Card scanner** | `18-card-scanner` | Full-screen camera with a card frame; QR codes are read automatically; shutter photographs the card; Library picks a photo. Shown here in its "camera off" state (photo fallback). |
+| 17 | Card result | `19-card-result-qr`, `-dark` | Bottom sheet listing what was read (name, company, role, phone, email, LinkedIn, birthday) and where it came from ("Read from the QR code" or "Read from the card"); Scan again / Add to note. |
+| 18 | Review after a card | `20-review-from-card-full` | The card photo sits in Photos; fields that came from the card carry a small "From card" label. |
+| 19 | Photo viewer | `21-photo-viewer` | Full-screen, dark; place, time and location source ("from phone GPS", "from the photo", or "No location saved in this photo"); Them / Card / Place switch; delete; previous / next. |
+| 20 | Ask AI, suggestions | `22-ask-suggestions` | Focusing the search box offers suggested questions; a mic asks by voice. |
+| 21 | Ask AI, typed question | `23-ask-typed` | When the text reads like a question, an "Ask AI" row appears above results. |
+| 22 | Ask AI, thinking / answer | `24-ask-thinking`, `25-ask-answer`, `-dark` | Skeleton while thinking, then a short answer, the people it used (tappable rows with a reason line), follow-up questions and a note that answers come only from your own notes. |
+
+Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
 ### Known weaknesses we'd like you to tackle
 
@@ -81,7 +90,8 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 - **Capture home has a lot of empty space** above the button. Keep it calm, but is there a better use (e.g. a confirmation of the last saved person) that doesn't compete with recording?
 - **The voice level halo** is subtle; recording state should be unmistakable in a dark bar.
 - **Processing** could preview the review card (skeleton) instead of a checklist.
-- **People rows** have no picture yet; photos are coming (section 7).
+- **Capture now has three controls** (Card, Record, Photo). Check that the record button still clearly dominates and that Card vs Photo is obvious at a glance.
+- **Initials avatars** make the People list busier than before. Tune size, tone and spacing so names still lead.
 - **Map** at city zoom is empty in the stand-in. Please specify a Mapbox style direction (light and dark) that matches the palette, plus pin, cluster and selected-pin designs.
 - **Desktop** is a single centred column. A list + detail split may serve desktop better; your call.
 - **Settings** is one long scroll.
@@ -100,41 +110,45 @@ Please design these; they are in scope for the MVP.
 - **Loading skeletons** for People, Profile and Map panel.
 - **Toasts**: saved, updated, deleted, discarded, copied.
 
-## 7. New features to design (not built yet)
+## 7. New features: built in the mockup, please refine
 
-Approved for the build. Please design them to fit the same principles: they must not slow down the 5-second voice capture.
+Photos, business card scanning and Ask AI now work in the mockup (screens 16 to 22) with simulated AI. They are approved for the build. Please refine them against the principles; they must not slow down the 5-second voice capture.
 
 ### 7.1 Photos with geotagging
 
-Three kinds of photo per person: **the person** (becomes their profile picture), **their business card**, and **the moment or place** (venue, event, group).
+Three kinds of photo per person: **them** (becomes their profile picture), **their business card**, and **the place or moment** (venue, event, group).
 
-- Take photos from the Capture screen, before, during or after a voice note. They attach to that note's draft. Suggested: a secondary camera button beside the record button.
-- Add or remove photos on Review and on a person's profile (camera or photo library).
-- Each photo carries a small location line, with its source made clear:
-  - "From phone GPS" when taken in the app.
-  - "From the photo" when a library photo has location saved inside it.
-  - "No location" otherwise. Phones often strip location from library photos, so this will be common and must look normal, not broken.
-- A kind label per photo (Them / Card / Place) that is quick to set or change.
-- A full-screen viewer with the place, time and location source.
-- Profile picture (or initials when none) on the People list, the profile header, map pins and the map person card.
+How it works now:
 
-### 7.2 Business cards: photo and QR scan
+- **Photo** button beside the record button opens the camera directly; photos attach to the current note, before, during or after recording, and show as a small stack under the heading.
+- Review and Profile have a photo strip; the "Add photo" tile asks Them / Card / Place first, then opens the camera or library.
+- Location rule: a photo taken in the app gets the phone's GPS; a library photo only gets the GPS saved inside it; otherwise "No location saved in this photo". Phones often strip location from library photos, so the "no location" state is common and must look normal, not broken.
+- Times show in local time where the photo was taken.
 
-- **Photograph a card** (front, optionally back). The AI reads it and fills name, company, role, phone, email, website and address into the review screen, merged with whatever the voice note said. Fields that came from the card should be distinguishable from fields that came from the voice note.
-- **Scan a QR code** on a card. It may hold a vCard (all details), a link to a digital card (Blinq, HiHello, Popl, LinkedIn and others), or just a phone number or email. vCard details fill the review screen directly; links are saved to the profile.
-- Entry point: from Capture, without competing with the record button (e.g. the camera button opens a camera with a "Card / QR" mode).
-- Live camera view with a card frame, QR detection feedback and a manual shutter; a confirmation step before results go into the draft.
+Please design: the photo strip and tile sizes, the kind label on thumbnails, the "Add photo" choice, the viewer, profile pictures and initials everywhere they appear, photo map pins, and the empty "no photos" state.
+
+### 7.2 Business cards: QR and photo
+
+How it works now:
+
+- **Card** button beside the record button opens the scanner: live camera with a card frame. A QR code is read automatically (vCard, MECARD, phone, email, WhatsApp link, digital-card or LinkedIn link); the shutter photographs the card for the AI to read. Where the live camera isn't available, it falls back to "take a photo" and still reads any QR in the photo.
+- A result sheet lists what was read and its source before anything goes into the note.
+- On Review, printed details win over spoken ones for phone, email, company and role; the card's name replaces the spoken one only if that was missing or uncertain. Fields from the card carry a "From card" label; the card photo joins the note's photos.
+
+Please design: the scanner (frame, detection feedback, the moment a QR is found, poor-light and blurry states), the result sheet, the "From card" provenance treatment on Review, and the "nothing readable" and camera-denied states.
 
 ### 7.3 Ask AI
 
-Ask questions in plain language about your own people, typed or spoken:
+Ask questions in plain language about your own people, typed or spoken, from the People search box:
 
 - "Who did I meet in Dubai who works in shipping?"
 - "Whose birthday is this month?"
 - "What did I note about Omar?"
-- "Who should I see while I'm in Bangkok next week?"
+- "Who should I see while I'm in Bangkok?"
 
-Answers are short and cite the people they draw on as tappable rows that open their profiles. Answers must say plainly when they found nothing, and never invent people or details. Suggested entry: the People search box, which offers "Ask AI" when the text reads like a question, plus a mic for voice questions. A fourth tab breaks the brief's three-tab rule, so justify it if you propose one. Please design the question state, a thinking state (skeleton), the answer with cited people, follow-up questions, no-results and error states.
+How it works now: suggested questions when the search box is focused; an "Ask AI" row appears when the text reads like a question; a mic asks by voice; a skeleton while thinking; then a short answer, the people it used as tappable rows with a reason line, follow-up questions, and a line saying answers come only from your own notes. It says plainly when nothing matches and never invents people.
+
+Please design: the entry (is the search box enough, or does it need a more visible door without a fourth tab?), the voice-question state, the answer layout, no-results and error states, and how a long answer with many people stays scannable.
 
 ## 8. Content and voice
 
@@ -180,6 +194,9 @@ Push notifications and reminders, vCard "save to contacts" export, WhatsApp voic
 | Profile | `app/(app)/people/[id]/page.tsx`, `components/original-note.tsx` |
 | Map | `components/map/map-screen.tsx`, `components/map/mini-map.tsx` |
 | Settings | `components/settings-screen.tsx` |
+| Photos | `components/photos/*` (strip, viewer, picker, avatar) |
+| Card scanner | `components/capture/card-scanner.tsx`, `lib/cards/*` |
+| Ask AI | `components/ask-panel.tsx`, `components/people-list.tsx` |
 | Base components | `components/ui/*` (shadcn base-nova) |
 | Product context | `PRODUCT.md` |
 
