@@ -3,9 +3,9 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { usePhotos } from "@/components/photos/photo-store";
-import { mockCurrentLocation } from "@/lib/mock/people";
+import { locateOnce, type LocateResult } from "@/lib/geo/locate";
 import { mockPlaceLabel } from "@/lib/mock/photos";
-import { chooseGeotag } from "@/lib/photos/geotag";
+import { chooseGeotag, isFresh } from "@/lib/photos/geotag";
 import { preparePhoto } from "@/lib/photos/prepare";
 import type { Photo, PhotoKind } from "@/lib/types";
 
@@ -18,20 +18,27 @@ type PickerTarget = {
 };
 
 // Hidden file input plus the logic to turn picked files into geotagged photos.
-// Mockup: the phone's location is the sample "current location" and photos
+// The location is asked for only when a photo was just taken. Mockup: photos
 // stay in memory; the real app uploads to the private photos bucket.
 export function usePhotoPicker() {
   const { add } = usePhotos();
   const inputRef = useRef<HTMLInputElement>(null);
   const targetRef = useRef<PickerTarget | null>(null);
+  // Started when the camera opens, so the fix is ready when the photo is.
+  const locating = useRef<Promise<LocateResult> | null>(null);
   const [busy, setBusy] = useState(false);
 
   function open(target: PickerTarget) {
     const input = inputRef.current;
     if (!input) return;
     targetRef.current = target;
-    if (target.camera) input.setAttribute("capture", "environment");
-    else input.removeAttribute("capture");
+    if (target.camera) {
+      input.setAttribute("capture", "environment");
+      locating.current = locateOnce();
+    } else {
+      input.removeAttribute("capture");
+      locating.current = null;
+    }
     input.click();
   }
 
@@ -43,12 +50,15 @@ export function usePhotoPicker() {
     for (const file of Array.from(files)) {
       try {
         const prepared = await preparePhoto(file);
+        const now = Date.now();
+        const justTaken = Boolean(target.camera) || isFresh(prepared.exif.takenAt, file.lastModified, now);
+        const located = justTaken ? await (locating.current ??= locateOnce()) : null;
         const geotag = chooseGeotag({
           exif: prepared.exif,
-          device: { lat: mockCurrentLocation.lat, lng: mockCurrentLocation.lng, accuracyM: mockCurrentLocation.accuracy },
+          device: located?.ok ? located.fix : null,
           fromCamera: Boolean(target.camera),
           lastModified: file.lastModified,
-          now: Date.now(),
+          now,
         });
         added.push({
           id: crypto.randomUUID(),

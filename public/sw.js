@@ -1,4 +1,4 @@
-// PeopleMap service worker: opens instantly and works offline for capture.
+// King of Names service worker: opens instantly and works offline for capture.
 // It caches only the app shell (the Capture screen, the offline page and the
 // build files they need). Pages and API responses with people's details are
 // never cached; recordings made offline wait in IndexedDB, not here.

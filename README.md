@@ -1,9 +1,9 @@
-# PeopleMap
+# King of Names
 
 A mobile-first progressive web app for remembering everyone you meet. Record a
 short voice note and the app stamps the place and date, transcribes it, and
-fills in a profile. "PeopleMap" is a placeholder name; change it in
-`lib/config.ts` and `NEXT_PUBLIC_APP_NAME`.
+fills in a profile. The name lives in `lib/config.ts` and
+`NEXT_PUBLIC_APP_NAME`.
 
 Stack: Next.js (App Router, TypeScript), Tailwind CSS with shadcn/ui, Supabase
 (Postgres, Auth, Storage), OpenAI transcription, Anthropic extraction, Mapbox,
@@ -42,8 +42,8 @@ phone, use a Vercel preview deployment.
 | `ANTHROPIC_API_KEY` | server only | Field extraction |
 | `EXTRACTION_MODEL` | server only | Anthropic model ID for extraction and card reading; `claude-haiku-4-5` recommended |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard |
-| `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding. Needs a card on the Mapbox account because results are stored (`permanent=true`) |
-| `NEXT_PUBLIC_APP_NAME` | browser and server | Display name, defaults to PeopleMap |
+| `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding: the stored place (permanent geocoding, needs a card on the Mapbox account) and the place shown while recording (temporary, free tier) |
+| `NEXT_PUBLIC_APP_NAME` | browser and server | Display name, defaults to King of Names |
 
 ## Database
 
@@ -99,7 +99,7 @@ Point it at the dev project, never production.
 Try it locally with Claude Code while `npm run dev` is running:
 
 ```bash
-claude mcp add --transport http peoplemap-dev http://localhost:3000/api/mcp
+claude mcp add --transport http king-of-names-dev http://localhost:3000/api/mcp
 ```
 
 Then ask Claude something like "Who are my investors in Dubai?". Claude.ai and ChatGPT need a public HTTPS URL with OAuth, so they can connect once the app is deployed with Supabase Auth's OAuth 2.1 server (see DECISIONS.md).

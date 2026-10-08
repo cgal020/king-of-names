@@ -1,4 +1,4 @@
-// The PeopleMap connector for Claude and ChatGPT (MCP over HTTP).
+// The King of Names connector for Claude and ChatGPT (MCP over HTTP).
 // Mockup: serves the sample data without sign-in, in development only.
 // Real build: wrap with withMcpAuth, verify Supabase OAuth 2.1 access tokens,
 // and read through a Supabase client carrying the user's token.
@@ -14,7 +14,7 @@ const handler = createMcpHandler(
     });
   },
   {
-    serverInfo: { name: "peoplemap", version: "0.1.0" },
+    serverInfo: { name: "king-of-names", version: "0.1.0" },
     instructions: SERVER_INSTRUCTIONS,
   },
 );

@@ -12,7 +12,24 @@ export type QueuedCapture = {
   location: { lat: number; lng: number; accuracyM: number | null } | null;
   attempts: number;
   lastError: string | null;
+  // Set when the server refused the note for good (too large, wrong format).
+  // It stays on the phone, out of the retries, until the user removes it.
+  rejected?: string;
 };
+
+// Thrown by an upload when the server refuses the note itself, so sending it
+// again can't help. Any other failure (no signal, server busy) is retried.
+export class UploadRejected extends Error {
+  name = "UploadRejected";
+}
+
+// How to treat the server's answer to an upload.
+export function classifyUploadStatus(status: number): "sent" | "retry" | "rejected" {
+  if (status >= 200 && status < 300) return "sent";
+  // 408 timeout and 429 rate limit pass with time; so do server errors.
+  if (status === 408 || status === 429 || status >= 500) return "retry";
+  return "rejected";
+}
 
 export type QueueStore = {
   put: (item: QueuedCapture) => Promise<void>;
@@ -20,11 +37,12 @@ export type QueueStore = {
   remove: (id: string) => Promise<void>;
 };
 
-type FlushResult = { sent: number; waiting: number };
+type FlushResult = { sent: number; waiting: number; rejected: number };
 const running = new WeakMap<QueueStore, Promise<FlushResult>>();
 
 // Sends every waiting recording, oldest first. A failure keeps the recording
-// and stops the run, since the rest would most likely fail the same way.
+// and stops the run, since the rest would most likely fail the same way. A
+// note the server refuses is marked and skipped, so it can't block the rest.
 // Runs one at a time per store: "online" and "visibilitychange" can fire
 // together, and two overlapping runs would upload the same recording twice.
 export function flushQueue(store: QueueStore, upload: (item: QueuedCapture) => Promise<void>): Promise<FlushResult> {
@@ -35,19 +53,27 @@ export function flushQueue(store: QueueStore, upload: (item: QueuedCapture) => P
 }
 
 async function flushOnce(store: QueueStore, upload: (item: QueuedCapture) => Promise<void>): Promise<FlushResult> {
-  const items = (await store.all()).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+  const all = (await store.all()).sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
+  const items = all.filter((item) => !item.rejected);
   let sent = 0;
-  for (const item of items) {
+  let rejected = all.length - items.length;
+  for (const [index, item] of items.entries()) {
     try {
       await upload(item);
       await store.remove(item.id);
       sent += 1;
     } catch (error) {
-      await store.put({ ...item, attempts: item.attempts + 1, lastError: error instanceof Error ? error.name : "Error" });
-      return { sent, waiting: items.length - sent };
+      const name = error instanceof Error ? error.name : "Error";
+      if (error instanceof UploadRejected) {
+        await store.put({ ...item, attempts: item.attempts + 1, lastError: name, rejected: error.message });
+        rejected += 1;
+        continue;
+      }
+      await store.put({ ...item, attempts: item.attempts + 1, lastError: name });
+      return { sent, waiting: items.length - index, rejected };
     }
   }
-  return { sent, waiting: 0 };
+  return { sent, waiting: 0, rejected };
 }
 
 export function memoryStore(): QueueStore {
@@ -59,7 +85,7 @@ export function memoryStore(): QueueStore {
   };
 }
 
-const DB = "peoplemap";
+const DB = "king-of-names";
 const STORE = "capture-queue";
 
 function open(): Promise<IDBDatabase> {

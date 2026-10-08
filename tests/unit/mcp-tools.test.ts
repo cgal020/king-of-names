@@ -30,7 +30,7 @@ async function call(name: string, args: object) {
   return { isError: result.isError ?? false, data: JSON.parse(result.content[0].text) };
 }
 
-describe("PeopleMap MCP connector", () => {
+describe("King of Names MCP connector", () => {
   it("offers four read-only tools", async () => {
     const { tools } = await rpc("tools/list");
     expect(tools.map((t: { name: string }) => t.name).sort()).toEqual([

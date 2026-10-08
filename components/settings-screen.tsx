@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ChevronDownIcon, CopyIcon, DownloadIcon } from "lucide-react";
+import { ChevronDownIcon, CopyIcon } from "lucide-react";
 import { ConfirmButton } from "@/components/confirm-button";
 import { AiConnectors } from "@/components/settings/ai-connectors";
+import { ExportButtons } from "@/components/settings/export-buttons";
 import { ImportContacts } from "@/components/settings/import-contacts";
 import { MyCard } from "@/components/settings/my-card";
 import { Button } from "@/components/ui/button";
@@ -164,19 +165,7 @@ export function SettingsScreen() {
       </Section>
 
       <Section title="Your data">
-        <div className="grid grid-cols-2 gap-3">
-          {["CSV", "JSON"].map((format) => (
-            <Button
-              key={format}
-              variant="outline"
-              size="touch-lg"
-              onClick={() => toast(`Export as ${format}`, { description: "Preview only. No file is made yet." })}
-            >
-              <DownloadIcon aria-hidden />
-              Export {format}
-            </Button>
-          ))}
-        </div>
+        <ExportButtons />
       </Section>
 
       <Section title="Privacy">

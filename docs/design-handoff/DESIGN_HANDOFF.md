@@ -1,4 +1,4 @@
-# Design handoff: PeopleMap UI/UX
+# Design handoff: King of Names UI/UX
 
 For: Claude Design. From: the build team (Clockworke Digital). Updated 7 October 2026.
 Attach the `screens/` folder next to this file; every screen below has a screenshot there.
@@ -44,7 +44,7 @@ From the client brief; please design within these or flag clearly if you think o
 
 - Mobile-first at 390 px wide, must still be usable on desktop (currently a centred column, max ~576 px).
 - **Bottom tab bar with four tabs: Capture, People, Ask, Map.** (The brief had three; Ask was added on 7 Oct so Ask AI is one tap from anywhere.) Settings sits behind an icon.
-- One accent colour. App name and accent are placeholders ("PeopleMap", muted green) and must stay changeable in one config file, so don't bake the name into artwork.
+- One accent colour. The app is called King of Names; the name and accent must stay changeable in one config file, so don't bake the name into artwork.
 - Light and dark mode follow the system; no toggle.
 - Skeletons, not spinners, where content is loading.
 - No agency branding inside the app.
@@ -90,7 +90,7 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 30 | People, Coming up | `07-people` | A Coming up box above the list: follow-ups (overdue first) and birthdays in the next six weeks. |
 | 31 | Map, trip mode | `34-map-trip` | "Trip" picks a city and dates; the map flies there and the panel says who you know, open follow-ups, birthdays during the trip, and people you also met there. |
 | 32 | Settings, Claude and ChatGPT | `35-settings-connectors` | Off-by-default switch, connector link with copy, setup steps for Claude and ChatGPT, what's shared, connected assistants. Settings also gained My card (your own QR) and Import contacts. |
-| 33 | Install prompt (iPhone) | `36-install-prompt-iphone` | A one-line prompt at the top of Capture in phone browsers: "Add PeopleMap to your Home Screen", with How and a close button. Hidden on desktop and once installed. |
+| 33 | Install prompt (iPhone) | `36-install-prompt-iphone` | A one-line prompt at the top of Capture in phone browsers: "Add King of Names to your Home Screen", with How and a close button. Hidden on desktop and once installed. |
 | 34 | Install steps (iPhone) | `37-install-steps-iphone`, `-dark` | "How" opens an instruction sheet: Share (or ⋯ first in newer Safari), Add to Home Screen, keep "Open as Web App" on. Android shows Chrome's install prompt when it's offered, otherwise the menu steps. |
 | 35 | Waiting to send | `38-capture-waiting-to-send` | A note recorded with no signal (or when the upload fails) stays on the phone: toast "Saved on your phone" and a dashed "1 note waiting to send" strip with Send now. Sends by itself once back online. |
 | 36 | Offline page | `39-offline-page` | Any page other than Capture opened without a connection: "You're offline", you can still record, "Record a note". |

@@ -12,7 +12,8 @@ import { detectQr } from "@/lib/cards/detect-qr";
 import { parseQr, type CardDetails } from "@/lib/cards/parse-qr";
 import { monthName } from "@/lib/format";
 import { mockReadCard } from "@/lib/mock/card-read";
-import { mockCurrentLocation, mockDraft } from "@/lib/mock/people";
+import { locateOnce, type LocateResult } from "@/lib/geo/locate";
+import { mockDraft } from "@/lib/mock/people";
 import { mockPlaceLabel } from "@/lib/mock/photos";
 import { chooseGeotag } from "@/lib/photos/geotag";
 import { preparePhoto } from "@/lib/photos/prepare";
@@ -38,6 +39,8 @@ export function CardScanner() {
   const supported = useCameraSupported();
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Where the card was scanned, started with the scan so it's ready by "Add to note".
+  const locating = useRef<Promise<LocateResult> | null>(null);
   const [phase, setPhase] = useState<Phase>("starting");
   const [still, setStill] = useState<{ url: string; blob: Blob; width: number; height: number } | null>(null);
   const [result, setLocalResult] = useState<CardResult | null>(null);
@@ -111,6 +114,7 @@ export function CardScanner() {
   }, [phase, showResult, linkDetails]);
 
   async function readStill(image: { url: string; blob: Blob; width: number; height: number }) {
+    locating.current = locateOnce();
     setStill(image);
     setPhase("reading");
     if (!linkDetails) {
@@ -138,12 +142,13 @@ export function CardScanner() {
     }
   }
 
-  function addToNote() {
+  async function addToNote() {
     if (!result) return;
     if (still) {
+      const located = await (locating.current ?? locateOnce());
       const geotag = chooseGeotag({
         exif: { lat: null, lng: null, takenAt: null },
-        device: { lat: mockCurrentLocation.lat, lng: mockCurrentLocation.lng, accuracyM: mockCurrentLocation.accuracy },
+        device: located.ok ? located.fix : null,
         fromCamera: true,
         lastModified: Date.now(),
         now: Date.now(),

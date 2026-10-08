@@ -43,12 +43,13 @@ export function parseReverseGeocode(json: unknown): Place | null {
   };
 }
 
-export function reverseGeocodeUrl(lat: number, lng: number, token: string) {
+// Stored results need permanent geocoding (paid per lookup); a place name that
+// is only shown and then thrown away can use the free temporary kind.
+export function reverseGeocodeUrl(lat: number, lng: number, token: string, { permanent = true } = {}) {
   const params = new URLSearchParams({
     longitude: lng.toFixed(6),
     latitude: lat.toFixed(6),
-    // Results are stored, which Mapbox only allows with permanent geocoding.
-    permanent: "true",
+    permanent: String(permanent),
     language: "en",
     access_token: token,
   });

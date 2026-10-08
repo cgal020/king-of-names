@@ -176,7 +176,7 @@ const SHOTS: Shot[] = [
     name: "31-ai-consent",
     path: "/capture",
     act: async (p) => {
-      await p.evaluate(() => localStorage.removeItem("peoplemap:ai-consent"));
+      await p.evaluate(() => localStorage.removeItem("king-of-names:ai-consent"));
       await p.getByRole("button", { name: "Start recording" }).click();
       await p.waitForTimeout(300);
     },
@@ -277,11 +277,13 @@ async function newContext(scheme: "light" | "dark", userAgent?: string) {
     isMobile: true,
     hasTouch: true,
     colorScheme: scheme,
-    permissions: ["microphone"],
+    // A simulated microphone and a fixed position at Dubai Marina, to match the sample data.
+    permissions: ["microphone", "geolocation"],
+    geolocation: { latitude: 25.0805, longitude: 55.1403, accuracy: 12 },
     userAgent,
   });
   // Skip the one-time AI consent sheet except in the shot that shows it.
-  await context.addInitScript(() => localStorage.setItem("peoplemap:ai-consent", "yes"));
+  await context.addInitScript(() => localStorage.setItem("king-of-names:ai-consent", "yes"));
   return context;
 }
 

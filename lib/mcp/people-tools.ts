@@ -1,4 +1,4 @@
-// Tools the PeopleMap connector offers Claude and ChatGPT over MCP.
+// Tools the King of Names connector offers Claude and ChatGPT over MCP.
 // Read-only: assistants can search and read, never change or delete.
 // The data source is passed in, so the real app can query Supabase with the
 // signed-in user's token (row level security keeps it to their own people).
@@ -14,7 +14,7 @@ export type PeopleSource = {
 };
 
 export const SERVER_INSTRUCTIONS =
-  "PeopleMap holds the user's private notes about people they have met: where and when, what they talked about, " +
+  "King of Names holds the user's private notes about people they have met: where and when, what they talked about, " +
   "tags for how each person could help, birthdays and follow-ups. Use these tools only to answer the user's own " +
   "questions. Cite people by name. Never invent people or details; if a search returns nothing, say so plainly. " +
   "Do not repeat phone numbers or emails unless the user asks for them.";

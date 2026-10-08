@@ -3,7 +3,7 @@
 import { ShieldCheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const KEY = "peoplemap:ai-consent";
+const KEY = "king-of-names:ai-consent";
 
 // Mockup keeps the answer in this browser; the real app stores it on the
 // user's profile so it follows them across devices.

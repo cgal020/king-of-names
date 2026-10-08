@@ -24,8 +24,8 @@ async function shot(page: Page, name: string) {
 async function open(browser: Browser, options: BrowserContextOptions = {}, coachDismissed = false) {
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, permissions: ["microphone"], ...options });
   await context.addInitScript((dismissed) => {
-    localStorage.setItem("peoplemap:ai-consent", "yes");
-    if (dismissed) localStorage.setItem("peoplemap:install-coach-dismissed", "yes");
+    localStorage.setItem("king-of-names:ai-consent", "yes");
+    if (dismissed) localStorage.setItem("king-of-names:install-coach-dismissed", "yes");
   }, coachDismissed);
   return { context, page: await context.newPage() };
 }

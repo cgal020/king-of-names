@@ -5,7 +5,7 @@ import { EllipsisIcon, EllipsisVerticalIcon, PlusSquareIcon, ShareIcon, Smartpho
 import { Button } from "@/components/ui/button";
 import { appConfig } from "@/lib/config";
 
-const DISMISSED = "peoplemap:install-coach-dismissed";
+const DISMISSED = "king-of-names:install-coach-dismissed";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
 

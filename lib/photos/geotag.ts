@@ -53,7 +53,9 @@ export function chooseGeotag({ exif, device, fromCamera, lastModified, now }: Ge
   };
 }
 
-function isFresh(exifTakenAt: string | null, lastModified: number, now: number) {
+// True for a photo taken in the last couple of minutes: only then is the
+// phone's current position also where the photo was taken.
+export function isFresh(exifTakenAt: string | null, lastModified: number, now: number) {
   if (exifTakenAt) {
     // EXIF times without an offset are local to the camera; compare as local.
     const taken = Date.parse(exifTakenAt);

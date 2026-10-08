@@ -1,8 +1,8 @@
 // App name and colours live here so the placeholders can be changed in a minute.
 // The accent is the only brand colour; everything else is neutral.
 export const appConfig = {
-  name: process.env.NEXT_PUBLIC_APP_NAME || "PeopleMap",
-  shortName: process.env.NEXT_PUBLIC_APP_NAME || "PeopleMap",
+  name: process.env.NEXT_PUBLIC_APP_NAME || "King of Names",
+  shortName: process.env.NEXT_PUBLIC_APP_NAME || "King of Names",
   description: "Remember everyone you meet.",
   accent: {
     light: "#1f6f5c",

@@ -15,18 +15,20 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
-import { uploadCapture, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
+import { CouldNotSend, uploadCapture, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
 import { InstallCoach } from "@/components/capture/install-coach";
 import { RecordButton } from "@/components/capture/record-button";
 import { useRecording } from "@/components/capture/recording-store";
+import { usePlaceName } from "@/components/capture/use-place-name";
 import { usePhotoPicker } from "@/components/photos/photo-picker";
 import { usePhotosFor } from "@/components/photos/photo-store";
 import { buttonVariants } from "@/components/ui/button";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
 import { appConfig } from "@/lib/config";
-import { formatDuration } from "@/lib/format";
-import { mockCurrentLocation, mockDraft, mockPendingReview } from "@/lib/mock/people";
-import type { QueuedCapture } from "@/lib/offline/queue";
+import { formatDistance, formatDuration } from "@/lib/format";
+import { trackLocation, type LocationStatus } from "@/lib/geo/locate";
+import { mockDraft, mockPendingReview } from "@/lib/mock/people";
+import { UploadRejected, type QueuedCapture } from "@/lib/offline/queue";
 import type { Photo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,7 +38,7 @@ const STEPS = ["Saving the recording", "Transcribing", "Picking out the details"
 const STEP_MS = 650;
 
 type Phase = "idle" | "recording" | "processing";
-type LocationState = "idle" | "locating" | "found" | "unavailable";
+type LocationState = { state: "idle" } | LocationStatus;
 
 export function CaptureScreen() {
   const router = useRouter();
@@ -44,7 +46,7 @@ export function CaptureScreen() {
   const [askingConsent, setAskingConsent] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(0);
-  const [location, setLocation] = useState<LocationState>("idle");
+  const [location, setLocation] = useState<LocationState>({ state: "idle" });
   const [step, setStep] = useState(0);
   // The first step, saving the recording, ends when the upload does.
   const [uploaded, setUploaded] = useState(false);
@@ -53,6 +55,8 @@ export function CaptureScreen() {
   const [live, setLive] = useState(false);
   const startedAt = useRef(0);
   const recording = useRef<Recording | null>(null);
+  const tracker = useRef<ReturnType<typeof trackLocation> | null>(null);
+  const { placeName, reset: resetPlace } = usePlaceName(location.state === "found" ? location.fix : null);
   const pressRef = useRef<() => void>(() => {});
   const picker = usePhotoPicker();
   const draftPhotos = usePhotosFor({ captureId: mockDraft.captureId });
@@ -67,14 +71,10 @@ export function CaptureScreen() {
       setElapsed(seconds);
       if (!live) {
         setLevel((prev) => Math.min(1, Math.max(0, prev * 0.6 + Math.random() * 0.55)));
-        if (seconds >= MAX_SECONDS) finish(null);
+        if (seconds >= MAX_SECONDS) void finish(null);
       }
     }, 100);
-    const locate = window.setTimeout(() => setLocation("found"), 1200);
-    return () => {
-      window.clearInterval(id);
-      window.clearTimeout(locate);
-    };
+    return () => window.clearInterval(id);
     // finish only uses stable setters and the queue's stable callbacks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, live]);
@@ -106,13 +106,22 @@ export function CaptureScreen() {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Leaving the screen mid-recording releases the microphone.
-  useEffect(() => () => recording.current?.cancel(), []);
+  // Leaving the screen mid-recording releases the microphone and stops GPS.
+  useEffect(
+    () => () => {
+      recording.current?.cancel();
+      tracker.current?.cancel();
+    },
+    [],
+  );
 
   async function startRecording() {
     startedAt.current = Date.now();
     setElapsed(0);
-    setLocation("locating");
+    // Location starts with the recording, so the stamp is where the note was made.
+    resetPlace();
+    tracker.current?.cancel();
+    tracker.current = trackLocation(setLocation);
     setPhase("recording");
     if (!canRecordAudio()) return;
     try {
@@ -121,7 +130,8 @@ export function CaptureScreen() {
       setLive(true);
     } catch {
       setPhase("idle");
-      setLocation("idle");
+      tracker.current?.cancel();
+      setLocation({ state: "idle" });
       toast.error("Microphone is off", {
         description: "Allow microphone access for this site in your browser settings, then try again.",
       });
@@ -131,14 +141,21 @@ export function CaptureScreen() {
   async function stopRecording() {
     const current = recording.current;
     recording.current = null;
-    finish(current ? await current.stop() : null);
+    void finish(current ? await current.stop() : null);
   }
 
-  function finish(result: RecordingResult | null) {
+  async function finish(result: RecordingResult | null) {
     setLevel(0);
     setLive(false);
     if (result) setRecording({ url: URL.createObjectURL(result.blob), durationSeconds: result.durationSeconds });
+    setStep(0);
+    setUploaded(false);
+    setPhase("processing");
 
+    // The best fix from the recording; with none yet, a few more seconds,
+    // then the note goes without one and the city is set on review.
+    const located = (await tracker.current?.done()) ?? { ok: false as const, reason: "unavailable" as const };
+    tracker.current = null;
     const item: QueuedCapture = {
       id: crypto.randomUUID(),
       audio: result?.blob ?? new Blob([], { type: "audio/mp4" }),
@@ -146,22 +163,21 @@ export function CaptureScreen() {
       durationSeconds: result?.durationSeconds ?? (Date.now() - startedAt.current) / 1000,
       recordedAt: new Date(startedAt.current).toISOString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-      location: { lat: mockCurrentLocation.lat, lng: mockCurrentLocation.lng, accuracyM: mockCurrentLocation.accuracy },
+      location: located.ok ? { lat: located.fix.lat, lng: located.fix.lng, accuracyM: located.fix.accuracyM } : null,
       attempts: 0,
       lastError: null,
     };
-    setStep(0);
-    setUploaded(false);
-    setPhase("processing");
     uploadCapture(item).then(
       () => setUploaded(true),
       // No connection, or too weak to send: keep the note on the phone and
-      // send it later.
-      async () => {
-        await queue.save(item);
+      // send it later. A refused note is kept too, marked, for the user to see.
+      async (error: unknown) => {
+        const refused = error instanceof UploadRejected;
+        await queue.save(refused ? { ...item, attempts: 1, lastError: error.name, rejected: error.message } : item);
         setPhase("idle");
-        setLocation("idle");
-        toast("Saved on your phone", { description: "No connection right now. It’ll be sent when you’re back online." });
+        setLocation({ state: "idle" });
+        if (refused) toast.error("This note couldn’t be sent", { description: error.message });
+        else toast("Saved on your phone", { description: "No connection right now. It’ll be sent when you’re back online." });
       },
     );
   }
@@ -193,6 +209,7 @@ export function CaptureScreen() {
         <InstallCoach />
         <NeedsReview />
         <WaitingToSend waiting={queue.waiting} sending={queue.sending} onSend={() => void queue.send()} />
+        <CouldNotSend notes={queue.rejected} onRemove={(id) => void queue.remove(id)} />
       </div>
 
       {/* Short screens (Safari with its toolbars) tighten up so the record button stays in view. */}
@@ -257,7 +274,7 @@ export function CaptureScreen() {
               Add manually
             </Link>
           ) : (
-            <LocationChip state={location} />
+            <LocationChip location={location} placeName={placeName} />
           )}
         </div>
       </section>
@@ -337,23 +354,23 @@ function NeedsReview() {
   );
 }
 
-function LocationChip({ state }: { state: LocationState }) {
-  if (state === "unavailable") {
+function LocationChip({ location, placeName }: { location: LocationState; placeName: string | null }) {
+  if (location.state === "denied" || location.state === "unavailable") {
     return (
       <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
         <MapPinOffIcon className="size-4" aria-hidden />
-        No location. You can set the city next.
+        {location.state === "denied" ? "Location is off." : "No location yet."} You can set the city next.
       </span>
     );
   }
-  const found = state === "found";
+  const fix = location.state === "found" ? location.fix : null;
   return (
     <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-      <MapPinIcon className={cn("size-4", found ? "text-primary" : "animate-pulse")} aria-hidden />
-      {found ? (
+      <MapPinIcon className={cn("size-4", fix ? "text-primary" : "animate-pulse")} aria-hidden />
+      {fix ? (
         <>
-          <span className="font-medium text-foreground">{mockCurrentLocation.placeName}</span>
-          <span>&middot; within {mockCurrentLocation.accuracy} m</span>
+          <span className="font-medium text-foreground">{placeName ?? "Location saved"}</span>
+          <span>&middot; within {formatDistance(fix.accuracyM / 1000)}</span>
         </>
       ) : (
         "Finding your location…"
