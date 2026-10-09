@@ -31,6 +31,8 @@ phone, use a Vercel preview deployment.
 
 ## Environment variables
 
+A variable already set in your shell wins over `.env.local`. Some tools (the Claude desktop app, for one) set their own `ANTHROPIC_API_KEY`, which makes card reading and extraction fail locally with 401; start the dev server with `env -u ANTHROPIC_API_KEY npm run dev` in that case.
+
 | Variable | Where it is used | Notes |
 |---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | browser and server | Supabase project URL |

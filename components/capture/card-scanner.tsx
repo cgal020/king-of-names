@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { detectQr } from "@/lib/cards/detect-qr";
 import { parseQr, type CardDetails } from "@/lib/cards/parse-qr";
 import { monthName } from "@/lib/format";
+import { authConfigured } from "@/lib/auth/config";
 import { mockReadCard } from "@/lib/mock/card-read";
 import { locateOnce, type LocateResult } from "@/lib/geo/locate";
 import { mockDraft } from "@/lib/mock/people";
@@ -32,8 +33,26 @@ function useCameraSupported() {
   );
 }
 
+// The card photo goes to the server's card reader as base64 JPEG.
+async function readCardPhoto(blob: Blob): Promise<CardDetails> {
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  const response = await fetch("/api/cards/read", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ image: btoa(binary) }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || !body?.details) throw new Error("The card couldn't be read");
+  return body.details as CardDetails;
+}
+
 export function CardScanner() {
   const router = useRouter();
+  // The card photo belongs to whatever the card goes into next.
+  const [draftId] = useState(() => (authConfigured() ? crypto.randomUUID() : mockDraft.captureId));
   const { add } = usePhotos();
   const { setResult } = useCardResult();
   const supported = useCameraSupported();
@@ -123,7 +142,14 @@ export function CardScanner() {
       bitmap.close();
       if (text) return showResult(parseQr(text).details, "qr");
     }
-    showResult(await mockReadCard(), "photo");
+    if (!authConfigured()) return showResult(await mockReadCard(), "photo");
+    try {
+      showResult(await readCardPhoto(image.blob), "photo");
+    } catch {
+      toast.error("Couldn’t read that card", { description: "Try again with the whole card in the frame, in good light." });
+      setStill(null);
+      setPhase(fallback ? "starting" : "live");
+    }
   }
 
   async function takePhoto() {
@@ -153,11 +179,13 @@ export function CardScanner() {
         lastModified: Date.now(),
         now: Date.now(),
       });
-      add([
+      const id = crypto.randomUUID();
+      add(
+        [
         {
-          id: crypto.randomUUID(),
+          id,
           person_id: null,
-          capture_id: mockDraft.captureId,
+          capture_id: draftId,
           kind: "card",
           url: still.url,
           width: still.width,
@@ -168,12 +196,16 @@ export function CardScanner() {
           lng: geotag.lng,
           location_accuracy_m: geotag.accuracyM,
           location_source: geotag.source,
-          place_label: geotag.lat !== null ? mockPlaceLabel(geotag.lat, geotag.lng!) : null,
+          place_label: geotag.lat !== null && !authConfigured() ? mockPlaceLabel(geotag.lat, geotag.lng!) : null,
         },
-      ]);
+        ],
+        new Map([[id, still.blob]]),
+      );
     }
-    setResult(result);
-    router.push("/capture/review");
+    setResult({ ...result, photoDraftId: draftId });
+    // The preview merges the card into its sample note; otherwise the card
+    // starts a new person, filled in from it.
+    router.push(authConfigured() ? "/people/new" : "/capture/review");
   }
 
   const fallback = supported === false || cameraDenied;
@@ -365,8 +397,8 @@ function ResultSheet({
           </>
         ) : (
           <>
-            <ScanTextIcon className="size-4 text-primary" aria-hidden /> Read from the card &middot; sample result in
-            this preview
+            <ScanTextIcon className="size-4 text-primary" aria-hidden /> Read from the card
+            {!authConfigured() && <> &middot; sample result in this preview</>}
           </>
         )}
       </p>

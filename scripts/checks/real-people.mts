@@ -79,15 +79,54 @@ try {
   await expect(page.getByText("Wants a Bangkok intro.")).toBeVisible();
   pass("editing saves the change");
 
+  // A sample business card rendered to a PNG, for the photo and card tests.
+  const shot = await context.newPage();
+  await shot.setViewportSize({ width: 1200, height: 900 });
+  await shot.goto(BASE + "/mock/photos/card-kenji.svg");
+  const cardPng = await shot.screenshot();
+  await shot.close();
+
+  await page.getByRole("button", { name: "Add photo" }).click();
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Place" }).click()]);
+  await chooser.setFiles({ name: "place.png", mimeType: "image/png", buffer: cardPng });
+  await expect(page.getByText("Photo added")).toBeVisible();
+  await expect
+    .poll(async () => (await admin.from("photos").select("id").eq("person_id", personId)).data?.length, { timeout: 20_000 })
+    .toBe(1);
+  const { data: photo } = await admin.from("photos").select("kind, place_label, storage_path").eq("person_id", personId).single();
+  expect(photo?.kind).toBe("moment");
+  expect(photo?.place_label).toContain("Dubai");
+  expect(photo?.storage_path.startsWith(`${userId}/`)).toBe(true);
+  await page.reload({ waitUntil: "networkidle" });
+  await expect(page.locator('img[src*="/storage/v1/object/sign/photos/"]').first()).toBeVisible();
+  pass("a photo uploads to the account's private photos with its place, and is still there after a reload");
+
   await page.goto(BASE + "/people", { waitUntil: "networkidle" });
   await page.getByLabel("Search people").fill("flamingo");
   await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
   pass("search finds them by a word only in their notes");
 
   const pins = await (await page.request.get(BASE + "/api/map")).json();
-  expect(pins.features).toHaveLength(1);
+  expect(pins.features).toHaveLength(1); // before the card test adds a second person
   expect(Object.keys(pins.features[0].properties).sort()).toEqual(["city", "id", "initials", "met_at", "name"]);
   pass("the map gets one pin for them, without their notes");
+
+  await page.goto(BASE + "/capture/card", { waitUntil: "networkidle" });
+  const [cardChooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Library" }).click()]);
+  await cardChooser.setFiles({ name: "card.png", mimeType: "image/png", buffer: cardPng });
+  await expect(page.getByText("Read from the card")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Kenji Watanabe")).toBeVisible();
+  await page.getByRole("button", { name: "Add to note" }).click();
+  await page.waitForURL("**/people/new", { waitUntil: "commit" });
+  // The label reads "Name From card".
+  await expect(page.locator("#full_name")).toHaveValue("Kenji Watanabe");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForURL(/\/people\/[0-9a-f-]{36}$/, { waitUntil: "commit" });
+  const kenjiId = page.url().split("/").pop()!;
+  await expect
+    .poll(async () => (await admin.from("photos").select("kind").eq("person_id", kenjiId)).data?.map((p) => p.kind), { timeout: 20_000 })
+    .toEqual(["card"]);
+  pass("a photographed card is read by the AI, fills in Add someone, and the card photo is saved with them");
 
   await page.goto(BASE + "/settings", { waitUntil: "networkidle" });
   await expect(page.getByText(username)).toBeVisible();
@@ -106,14 +145,21 @@ try {
   await page.getByRole("button", { name: /^Delete Smoke/ }).click();
   await page.getByRole("button", { name: "Delete", exact: true }).click();
   await page.waitForURL("**/people", { waitUntil: "commit" });
-  await expect(page.getByText("No one here yet")).toBeVisible();
-  const { count: left } = await admin.from("people").select("id", { count: "exact", head: true }).eq("user_id", userId);
-  expect(left).toBe(0);
-  pass("deleting removes them from the database");
+  await expect(page.getByText("Kenji Watanabe")).toBeVisible();
+  await expect(page.getByText(name)).toHaveCount(0);
+  const { data: left } = await admin.from("people").select("id").eq("user_id", userId);
+  expect(left?.map((p) => p.id)).toEqual([kenjiId]);
+  const { data: photoFiles } = await admin.storage.from("photos").list(userId);
+  expect(photoFiles).toHaveLength(1);
+  pass("deleting removes them and their photos from the database and storage");
 } catch (error) {
   out.push("FAIL " + String((error as Error).message).split("\n").slice(0, 3).join(" | "));
 } finally {
   await browser.close();
+  for (const bucket of ["photos", "audio"]) {
+    const { data: files } = await admin.storage.from(bucket).list(userId);
+    if (files?.length) await admin.storage.from(bucket).remove(files.map((f) => `${userId}/${f.name}`));
+  }
   await admin.from("invite_codes").delete().eq("created_by", userId);
   await admin.auth.admin.deleteUser(userId);
   const { count } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("id", userId);

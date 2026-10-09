@@ -113,17 +113,19 @@ export function PersonForm({
 }: PersonFormProps) {
   const router = useRouter();
   const draftId = useId();
+  const { result: card, setResult: setCard } = useCardResult();
+  // A scanned card fills in a new person too; its photo waits under its own id.
+  const [cardPhotoId] = useState(() => (mode === "new" ? card?.photoDraftId : undefined));
   const photoTarget =
-    mode === "edit" ? { personId } : { captureId: captureId ?? `new${draftId}` };
+    mode === "edit" ? { personId } : { captureId: captureId ?? cardPhotoId ?? `new${draftId}` };
   const photos = usePhotosFor(photoTarget);
   const { attachDraft } = usePhotos();
-  const { result: card, setResult: setCard } = useCardResult();
   // The note just recorded on this phone, so review plays back the real audio.
   const { recording: latest } = useRecording();
   const recording = audio === undefined ? latest : audio;
   // Details from a scanned business card are merged into the draft once.
   const [merged] = useState(() =>
-    mode === "review" && card ? mergeCard(initial, card.details, nameConfidence) : null,
+    (mode === "review" || mode === "new") && card ? mergeCard(initial, card.details, nameConfidence) : null,
   );
   const fromCard = (field: CardField) => Boolean(merged?.fromCard.has(field));
   const [values, setValues] = useState(() => {

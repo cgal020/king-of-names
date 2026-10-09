@@ -76,7 +76,10 @@ export function CaptureScreen() {
   const { placeName, reset: resetPlace } = usePlaceName(location.state === "found" ? location.fix : null);
   const pressRef = useRef<() => void>(() => {});
   const picker = usePhotoPicker();
-  const draftPhotos = usePhotosFor({ captureId: mockDraft.captureId });
+  // The note being made: photos taken on Capture belong to it. The preview
+  // uses the sample draft's id, so its Review shows them.
+  const [noteDraftId, setNoteDraftId] = useState(() => (authConfigured() ? crypto.randomUUID() : mockDraft.captureId));
+  const draftPhotos = usePhotosFor({ captureId: noteDraftId });
   const { setRecording } = useRecording();
   const queue = useCaptureQueue();
   const openNotes = useOpenNotes(queue.waiting);
@@ -198,7 +201,8 @@ export function CaptureScreen() {
     // then the note goes without one and the city is set on review.
     const located = (await locating?.done()) ?? { ok: false as const, reason: "unavailable" as const };
     const item: QueuedCapture = {
-      id: crypto.randomUUID(),
+      // Quick takes get their own id; a note keeps the one its photos use.
+      id: quickTake || !authConfigured() ? crypto.randomUUID() : noteDraftId,
       audio: result?.blob ?? new Blob([], { type: "audio/mp4" }),
       mime: result?.mime ?? "audio/mp4",
       durationSeconds: result?.durationSeconds ?? (Date.now() - startedAt.current) / 1000,
@@ -212,6 +216,8 @@ export function CaptureScreen() {
       saveTake(item, result);
       return;
     }
+    // The next note starts fresh; this one's photos stay with it.
+    if (authConfigured()) setNoteDraftId(crypto.randomUUID());
     void queue.sendNew(item).then((sent) => {
       if (sent.ok) {
         setUploaded(true);
@@ -350,7 +356,7 @@ export function CaptureScreen() {
               <SideAction
                 label="Photo"
                 icon={<CameraIcon />}
-                onClick={() => picker.open({ captureId: mockDraft.captureId, kind: "moment", camera: true })}
+                onClick={() => picker.open({ captureId: noteDraftId, kind: "moment", camera: true })}
               />
             )}
           </div>

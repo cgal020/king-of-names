@@ -3,10 +3,11 @@
 import { createContext, useContext, useMemo, useState } from "react";
 import type { CardDetails } from "@/lib/cards/parse-qr";
 
-// Hands details read from a business card to the review screen. Mockup only;
-// the real app saves them on the capture draft.
+// Hands details read from a business card to the form that uses them next
+// (Review in the preview, Add someone otherwise), with the id its card photo
+// is held under until that person is saved.
 
-export type CardResult = { details: CardDetails; source: "qr" | "photo" };
+export type CardResult = { details: CardDetails; source: "qr" | "photo"; photoDraftId?: string };
 
 type CardStore = {
   result: CardResult | null;

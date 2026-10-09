@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { usePhotos } from "@/components/photos/photo-store";
+import { authConfigured } from "@/lib/auth/config";
 import { locateOnce, type LocateResult } from "@/lib/geo/locate";
 import { mockPlaceLabel } from "@/lib/mock/photos";
 import { chooseGeotag, isFresh } from "@/lib/photos/geotag";
@@ -18,8 +19,8 @@ type PickerTarget = {
 };
 
 // Hidden file input plus the logic to turn picked files into geotagged photos.
-// The location is asked for only when a photo was just taken. Mockup: photos
-// stay in memory; the real app uploads to the private photos bucket.
+// The location is asked for only when a photo was just taken. The photo store
+// uploads them to the private photos bucket (the preview keeps them in memory).
 export function usePhotoPicker() {
   const { add } = usePhotos();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +48,7 @@ export function usePhotoPicker() {
     if (!files?.length || !target) return;
     setBusy(true);
     const added: Photo[] = [];
+    const picked = new Map<string, Blob>();
     for (const file of Array.from(files)) {
       try {
         const prepared = await preparePhoto(file);
@@ -60,8 +62,10 @@ export function usePhotoPicker() {
           lastModified: file.lastModified,
           now,
         });
+        const id = crypto.randomUUID();
+        picked.set(id, prepared.blob);
         added.push({
-          id: crypto.randomUUID(),
+          id,
           person_id: target.personId ?? null,
           capture_id: target.captureId ?? null,
           kind: target.kind,
@@ -79,17 +83,20 @@ export function usePhotoPicker() {
           lng: geotag.lng,
           location_accuracy_m: geotag.accuracyM,
           location_source: geotag.source,
-          place_label: geotag.lat !== null && geotag.lng !== null ? mockPlaceLabel(geotag.lat, geotag.lng) : null,
+          // The place is looked up on the server when the photo is saved.
+          place_label:
+            geotag.lat !== null && geotag.lng !== null && !authConfigured() ? mockPlaceLabel(geotag.lat, geotag.lng) : null,
         });
       } catch {
         toast.error("Couldn't add that photo", { description: "Try another one, or take it again." });
       }
     }
     if (added.length) {
-      add(added);
+      add(added, picked);
       const where = added[0].place_label;
+      const located = added[0].lat !== null;
       toast.success(added.length === 1 ? "Photo added" : `${added.length} photos added`, {
-        description: where ? `Tagged at ${where}` : "No location saved in this photo",
+        description: where ? `Tagged at ${where}` : located ? "Tagged with where it was taken" : "No location saved in this photo",
       });
     }
     setBusy(false);
