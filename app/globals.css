@@ -151,3 +151,10 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Mapbox's terms require its logo and attribution to stay visible; the Map
+   panel overlaps the map's bottom edge, so lift them clear of it. */
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  margin-bottom: 1rem;
+}

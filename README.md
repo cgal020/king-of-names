@@ -41,7 +41,8 @@ phone, use a Vercel preview deployment.
 | `TRANSCRIPTION_LANGUAGES` | server only | Comma-separated languages notes are spoken in, default `en` |
 | `ANTHROPIC_API_KEY` | server only | Field extraction |
 | `EXTRACTION_MODEL` | server only | Anthropic model ID for extraction and card reading; `claude-haiku-4-5` recommended |
-| `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard. Without it the Map shows a drawn stand-in |
+| `NEXT_PUBLIC_MAPBOX_STYLE` | browser | Optional Mapbox Studio style URL instead of Mapbox Standard; `blank` draws no tiles, for tests |
 | `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding: the stored place (permanent geocoding, needs a card on the Mapbox account) and the place shown while recording (temporary, free tier) |
 | `NEXT_PUBLIC_APP_NAME` | browser and server | Display name, defaults to King of Names |
 | `NEXT_PUBLIC_SITE_URL` | server | The app's public address, used in password reset links. Optional locally |
@@ -80,6 +81,7 @@ npm test                  # unit tests, offline
 npm run test:integration  # row level security test against the Supabase project in .env.local
 npm run eval:extraction   # 13 sample notes through the real extraction model (costs a few cents)
 npm run check:pwa         # recording, offline queue, shortcut, manifest and install help in Chrome (dev server running)
+npm run check:flows       # Event mode, sign-in screens, failure and empty states, and the Map in Chrome (dev server running)
 ```
 
 To include the service worker, check a production build:
@@ -111,6 +113,17 @@ Then ask Claude something like "Who are my investors in Dubai?". Claude.ai and C
 - `public/sw.js` is the service worker. It registers in production builds only and keeps just the Capture screen and the offline page, so the app opens without a connection. Change `VERSION` in it when its caching rules change.
 - Notes recorded without a connection wait in IndexedDB (`lib/offline/queue.ts`) and are sent when the app is next online.
 - The service worker only runs over HTTPS or on `localhost`, so test installing on a phone with a Vercel preview deployment.
+
+## Map
+
+The Map uses Mapbox GL JS when `NEXT_PUBLIC_MAPBOX_TOKEN` is set, and a drawn stand-in otherwise. Pins come as GeoJSON from `/api/map`. One map is made per session and reused between visits, because each new map is a billed load.
+
+Mapbox needs two tokens:
+
+- **Browser** (`NEXT_PUBLIC_MAPBOX_TOKEN`): a public token with the default public scopes, restricted to the production and preview URLs under URL restrictions.
+- **Server** (`MAPBOX_SERVER_TOKEN`): a separate token with no URL restrictions (server requests carry no web address, so a restricted token would be refused). Never expose it to the browser.
+
+To test the real map without tiles, run the dev server with `NEXT_PUBLIC_MAPBOX_TOKEN=pk.test NEXT_PUBLIC_MAPBOX_STYLE=blank`, then `MAPBOX=1 PWA_BASE_URL=<that server> node scripts/checks/map.mts`.
 
 ## Screenshots for design reviews
 

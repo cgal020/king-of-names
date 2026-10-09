@@ -15,7 +15,8 @@
     "screenshots": "node scripts/screenshots.mts",
     "eval:extraction": "vitest run --config vitest.eval.config.ts",
     "icons": "node scripts/build-icons.mts",
-    "check:pwa": "node scripts/check-pwa.mts"
+    "check:pwa": "node scripts/check-pwa.mts",
+    "check:flows": "node scripts/checks/event.mts && node scripts/checks/auth.mts && node scripts/checks/states.mts && node scripts/checks/map.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -27,6 +28,7 @@
     "cn": "^0.4.0",
     "jsqr": "^1.4.0",
     "lucide-react": "^1.52.0",
+    "mapbox-gl": "^3.32.0",
     "mcp-handler": "^2.2.0",
     "next": "16.3.8",
     "openai": "^7.30.0",
@@ -42,6 +44,7 @@
   "devDependencies": {
     "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
+    "@types/geojson": "^7946.0.16",
     "@types/node": "^24.19.1",
     "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
