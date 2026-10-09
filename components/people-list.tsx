@@ -292,7 +292,7 @@ function FilterChip({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center py-20 text-center">
-      <p className="text-xl font-semibold tracking-tight">No one here yet</p>
+      <p className="type-sheet-title">No one here yet</p>
       <p className="mt-2 max-w-[30ch] text-muted-foreground">
         Record a quick note the next time you meet someone. It takes five seconds.
       </p>

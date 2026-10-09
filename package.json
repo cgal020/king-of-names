@@ -16,7 +16,8 @@
     "eval:extraction": "vitest run --config vitest.eval.config.ts",
     "icons": "node scripts/build-icons.mts",
     "check:pwa": "node scripts/check-pwa.mts",
-    "check:flows": "node scripts/checks/event.mts && node scripts/checks/auth.mts && node scripts/checks/states.mts && node scripts/checks/map.mts"
+    "check:flows": "node scripts/checks/event.mts && node scripts/checks/auth.mts && node scripts/checks/states.mts && node scripts/checks/map.mts",
+    "check:real": "node --env-file=.env.local scripts/checks/real-people.mts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

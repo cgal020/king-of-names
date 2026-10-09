@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -18,8 +18,10 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { mergeCard, type CardField } from "@/lib/cards/merge";
-import { formatMetDate, monthName } from "@/lib/format";
-import { mockCities, mockPeople } from "@/lib/mock/people";
+import { createPerson, updatePerson, type SaveResult } from "@/app/actions/people";
+import { formatMetDate, localInputToIso, monthName } from "@/lib/format";
+import { cityOptions } from "@/lib/geo/cities";
+import { locateOnce } from "@/lib/geo/locate";
 import { findSimilar } from "@/lib/similar";
 import { knownTags } from "@/lib/tags";
 import type { Confidence, Person } from "@/lib/types";
@@ -30,6 +32,8 @@ type PersonInput = Omit<Person, "id" | "created_at" | "updated_at">;
 type PersonFormProps = {
   mode: "review" | "new" | "edit";
   initial: PersonInput;
+  // Everyone already saved: for "Already met?", tag suggestions and cities.
+  people: Person[];
   personId?: string;
   // The capture this draft came from; photos taken for it hang off this id.
   captureId?: string;
@@ -71,6 +75,9 @@ function toLocalInput(iso: string, timeZone: string | null) {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
+const noSubscribe = () => () => {};
+const phoneTimeZone = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
+
 // Display-only place name for a pin moved by hand (see /api/geocode).
 async function lookUpPlace(at: { lat: number; lng: number }) {
   try {
@@ -87,18 +94,10 @@ async function lookUpPlace(at: { lat: number; lng: number }) {
   }
 }
 
-function cityCenter(city: string) {
-  const inCity = mockPeople.filter((p) => p.city === city && p.lat !== null && p.lng !== null);
-  if (!inCity.length) return null;
-  return {
-    lat: inCity.reduce((sum, p) => sum + p.lat!, 0) / inCity.length,
-    lng: inCity.reduce((sum, p) => sum + p.lng!, 0) / inCity.length,
-  };
-}
-
 export function PersonForm({
   mode,
   initial,
+  people,
   personId,
   captureId,
   transcript,
@@ -125,12 +124,19 @@ export function PersonForm({
   const fromCard = (field: CardField) => Boolean(merged?.fromCard.has(field));
   const [values, setValues] = useState(() => {
     const start = merged?.person ?? initial;
-    return { ...start, met_at_local: toLocalInput(start.met_at, start.met_timezone) };
+    // Without a known zone the time is filled in on the phone (below), so the
+    // server and the phone don't render different times.
+    return { ...start, met_at_local: start.met_timezone ? toLocalInput(start.met_at, start.met_timezone) : "" };
   });
   const [opened, setOpened] = useState<Set<Section>>(new Set());
   const [nameTouched, setNameTouched] = useState(false);
   const [tagsTouched, setTagsTouched] = useState(false);
-  const tagSuggestions = useMemo(() => knownTags(mockPeople), []);
+  const tagSuggestions = useMemo(() => knownTags(people), [people]);
+  const cities = useMemo(() => cityOptions(people), [people]);
+  // A city picked from the list is kept as chosen; a GPS or moved pin is
+  // looked up again when saving.
+  const [cityByHand, setCityByHand] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [duplicateChoice, setDuplicateChoice] = useState<"new" | string>("new");
   const [changingCity, setChangingCity] = useState(false);
   const [movingPin, setMovingPin] = useState(false);
@@ -158,29 +164,81 @@ export function PersonForm({
     () =>
       mode === "edit"
         ? []
-        : findSimilar(values.full_name, mockPeople).filter((p) => p.id !== personId),
-    [mode, values.full_name, personId],
+        : findSimilar(values.full_name, people).filter((p) => p.id !== personId),
+    [mode, values.full_name, personId, people],
   );
   const updating = duplicates.find((p) => p.id === duplicateChoice);
   // A name printed on a scanned card settles any doubt about the spoken one.
   const cardHasName = Boolean(merged && card?.details.full_name);
   const flagName = mode === "review" && nameConfidence !== "high" && !nameTouched && !cardHasName;
-  const canSave = values.full_name.trim().length > 0;
+  // Without a known zone (added by hand) the phone's own is used. It's read
+  // on the phone only, so the server and the phone render the same.
+  const deviceZone = useSyncExternalStore(noSubscribe, phoneTimeZone, () => null);
+  const zone = values.met_timezone ?? deviceZone;
+  const metAtLocal = values.met_at_local || (zone ? toLocalInput(values.met_at, zone) : "");
+  const canSave = values.full_name.trim().length > 0 && metAtLocal !== "";
 
-  function save() {
-    if (!canSave) return;
-    const name = values.full_name.trim();
-    if (photoTarget.captureId) attachDraft(photoTarget.captureId, updating?.id ?? personId ?? null);
-    setCard(null);
-    toast.success(updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
-      description: "Preview only. Nothing was stored.",
+  // Someone added by hand is stamped with where the phone is now.
+  useEffect(() => {
+    if (mode !== "new" || initial.lat !== null) return;
+    let cancelled = false;
+    void locateOnce().then((result) => {
+      if (cancelled || !result.ok) return;
+      const { lat, lng, accuracyM } = result.fix;
+      setValues((v) => (v.lat !== null || cityByHand ? v : { ...v, lat, lng, location_accuracy_m: accuracyM }));
+      void lookUpPlace({ lat, lng }).then((place) => {
+        if (!cancelled && place) setValues((v) => (v.lat === lat ? { ...v, place_name: place.placeName, city: place.city ?? v.city } : v));
+      });
     });
-    if (after) {
-      after.onDone("saved");
-      router.push(after.href);
+    return () => {
+      cancelled = true;
+    };
+    // Once, when the form opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function save() {
+    if (!canSave || saving) return;
+    const name = values.full_name.trim();
+    if (mode === "review") {
+      // Voice notes aren't stored yet, so a reviewed note is a preview.
+      if (photoTarget.captureId) attachDraft(photoTarget.captureId, updating?.id ?? personId ?? null);
+      setCard(null);
+      toast.success(updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
+        description: "Preview only. Nothing was stored.",
+      });
+      if (after) {
+        after.onDone("saved");
+        router.push(after.href);
+        return;
+      }
+      router.push(updating ? `/people/${updating.id}` : "/people");
       return;
     }
-    router.push(updating ? `/people/${updating.id}` : personId ? `/people/${personId}` : "/people");
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- left out of what's saved
+    const { met_at_local, ...person } = values;
+    const payload = { ...person, met_timezone: zone, met_at: localInputToIso(metAtLocal, zone) };
+    setSaving(true);
+    let result: SaveResult;
+    try {
+      result =
+        mode === "edit" && personId
+          ? await updatePerson(personId, payload, { cityByHand })
+          : await createPerson(payload, { cityByHand });
+    } catch {
+      result = { ok: false, error: "That didn’t save. Check your connection and try again." };
+    }
+    setSaving(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    if (photoTarget.captureId) attachDraft(photoTarget.captureId, result.id);
+    toast.success(mode === "edit" ? "Changes saved" : `Saved ${name}`, {
+      description: result.preview ? "Preview only. Nothing was stored." : undefined,
+    });
+    router.push(result.id && !result.preview ? `/people/${result.id}` : personId ? `/people/${personId}` : "/people");
   }
 
   function discard() {
@@ -195,7 +253,7 @@ export function PersonForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        save();
+        void save();
       }}
       className="pb-28"
     >
@@ -284,6 +342,7 @@ export function PersonForm({
                 onCancel={() => setMovingPin(false)}
                 onDone={(at) => {
                   setMovingPin(false);
+                  setCityByHand(false);
                   // Placed by hand, so no GPS accuracy. The place name shown
                   // here is a free lookup; saving looks it up again to keep.
                   setValues((v) => ({ ...v, lat: at.lat, lng: at.lng, location_accuracy_m: null }));
@@ -299,15 +358,16 @@ export function PersonForm({
                 className="mt-2 h-13 w-full rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
                 value={values.city ?? ""}
                 onChange={(e) => {
-                  const entry = mockCities.find((c) => c.city === e.target.value);
-                  const center = entry ? cityCenter(entry.city) : null;
+                  const entry = cities.find((c) => c.city === e.target.value);
+                  setCityByHand(true);
                   setValues((v) => ({
                     ...v,
                     city: entry?.city ?? null,
-                    country: entry?.country ?? null,
+                    country: entry?.country || null,
                     place_name: null,
-                    lat: center?.lat ?? null,
-                    lng: center?.lng ?? null,
+                    region: null,
+                    lat: entry?.lat ?? null,
+                    lng: entry?.lng ?? null,
                     // The city's centre, not a GPS reading.
                     location_accuracy_m: null,
                   }));
@@ -317,9 +377,9 @@ export function PersonForm({
                 <option value="" disabled>
                   Choose a city
                 </option>
-                {mockCities.map((c) => (
+                {cities.map((c) => (
                   <option key={c.city} value={c.city}>
-                    {c.city}, {c.country}
+                    {c.country ? `${c.city}, ${c.country}` : c.city}
                   </option>
                 ))}
               </select>
@@ -330,8 +390,11 @@ export function PersonForm({
             <Input
               id="met_at"
               type="datetime-local"
-              value={values.met_at_local}
-              onChange={(e) => set("met_at_local", e.target.value)}
+              value={metAtLocal}
+              onChange={(e) => {
+                const local = e.target.value;
+                setValues((v) => ({ ...v, met_at_local: local, met_timezone: v.met_timezone ?? deviceZone }));
+              }}
             />
           </Field>
         </div>
@@ -580,8 +643,8 @@ export function PersonForm({
               Cancel
             </Link>
           )}
-          <Button type="submit" size="touch-lg" className="flex-[2]" disabled={!canSave}>
-            {updating ? `Update ${updating.full_name.split(" ")[0]}` : mode === "edit" ? "Save changes" : "Save"}
+          <Button type="submit" size="touch-lg" className="flex-[2]" disabled={!canSave || saving} aria-busy={saving}>
+            {saving ? "Saving…" : updating ? `Update ${updating.full_name.split(" ")[0]}` : mode === "edit" ? "Save changes" : "Save"}
           </Button>
         </div>
       </div>

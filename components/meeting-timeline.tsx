@@ -12,8 +12,17 @@ import type { Encounter } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // Every time you met someone, newest first, with a quick way to add another.
-// Mockup: new meetings live in memory; the real app records them as captures.
-export function MeetingTimeline({ personId, initial }: { personId: string; initial: Encounter[] }) {
+// Preview: new meetings live in memory. "Met again" comes to saved people
+// with voice notes, which record each later meeting.
+export function MeetingTimeline({
+  personId,
+  initial,
+  canAdd = true,
+}: {
+  personId: string;
+  initial: Encounter[];
+  canAdd?: boolean;
+}) {
   const [meetings, setMeetings] = useState(initial);
   const [adding, setAdding] = useState(false);
   const [note, setNote] = useState("");
@@ -54,10 +63,10 @@ export function MeetingTimeline({ personId, initial }: { personId: string; initi
   return (
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-muted-foreground">
+        <h2 className="type-section">
           {meetings.length === 1 ? "Met once" : `Met ${meetings.length} times`}
         </h2>
-        {!adding && (
+        {canAdd && !adding && (
           <Button variant="ghost" size="touch" className="-mr-3 text-primary" onClick={() => setAdding(true)}>
             <PlusIcon aria-hidden />
             Met again

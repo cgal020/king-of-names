@@ -3,7 +3,9 @@
 import { useRef, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ContactRoundIcon, FileUpIcon } from "lucide-react";
+import { importContacts } from "@/app/actions/settings";
 import { Button } from "@/components/ui/button";
+import { authConfigured } from "@/lib/auth/config";
 import type { CardDetails } from "@/lib/cards/parse-qr";
 import { contactsFromPicker, contactsFromVcf, type PickedContact } from "@/lib/contacts/import";
 
@@ -21,6 +23,25 @@ export function ImportContacts() {
   const picker = useSyncExternalStore(noSubscribe, hasPicker, () => false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<CardDetails[] | null>(null);
+  const [importing, setImporting] = useState(false);
+
+  async function importAll(contacts: CardDetails[]) {
+    setImporting(true);
+    const result = await importContacts(contacts, Intl.DateTimeFormat().resolvedOptions().timeZone).catch(() => ({
+      ok: false as const,
+      error: "The import didn’t save. Check your connection and try again.",
+    }));
+    setImporting(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    const skipped = result.skipped ? ` ${result.skipped} without a name were left out.` : "";
+    toast.success(`Imported ${result.count} ${result.count === 1 ? "contact" : "contacts"}`, {
+      description: authConfigured() ? skipped.trim() || undefined : `Preview only. Nothing was stored.${skipped}`,
+    });
+    setPreview(null);
+  }
 
   async function readFiles(files: FileList | null) {
     if (!files?.length) return;
@@ -55,7 +76,7 @@ export function ImportContacts() {
           ))}
         </ul>
         <p className="mt-2 text-sm text-muted-foreground">
-          They&rsquo;ll be added without a place or date. Add where you met when you next see them.
+          They&rsquo;ll be added with today&rsquo;s date and no place. Add where you met when you next see them.
         </p>
         <div className="mt-3 flex gap-2">
           <Button variant="outline" size="touch" className="flex-1" onClick={() => setPreview(null)}>
@@ -64,14 +85,10 @@ export function ImportContacts() {
           <Button
             size="touch"
             className="flex-[2]"
-            onClick={() => {
-              toast.success(`Imported ${preview.length} ${preview.length === 1 ? "contact" : "contacts"}`, {
-                description: "Preview only. Nothing was stored.",
-              });
-              setPreview(null);
-            }}
+            disabled={importing}
+            onClick={() => void importAll(preview)}
           >
-            Import {preview.length}
+            {importing ? "Importing…" : `Import ${preview.length}`}
           </Button>
         </div>
       </div>

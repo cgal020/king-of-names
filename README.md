@@ -95,6 +95,14 @@ The integration test creates two throwaway users, checks that neither can see
 or change the other's people, captures, profile or audio, then deletes them.
 Point it at the dev project, never production.
 
+### Against the real database
+
+```bash
+npm run check:real
+```
+
+Creates a throwaway account in the Supabase project from `.env.local`, signs in on the dev server, adds, edits, searches, exports and deletes a person, then deletes the account. Needs the dev server running with real keys.
+
 ## Claude and ChatGPT connector (MCP)
 
 `app/api/mcp/route.ts` is a read-only MCP server with four tools: `search_people`, `get_person`, `coming_up` and `people_near` (defined in `lib/mcp/people-tools.ts`). In development it serves the sample data without sign-in; in production it returns 404 until OAuth is wired up.

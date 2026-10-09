@@ -11,15 +11,15 @@ import { ScreenHeader } from "@/components/screen-header";
 import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
-import { getMockMeetings, getMockPerson } from "@/lib/mock/people";
+import { getPerson, listMeetings, usingSampleData } from "@/lib/data/people";
 import { cn } from "@/lib/utils";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
   const { id } = await params;
-  const p = getMockPerson(id);
+  const p = await getPerson(id);
   if (!p) notFound();
 
-  const meetings = getMockMeetings(p.id);
+  const meetings = await listMeetings(p);
   const latest = meetings[0];
   const birthday = formatBirthday(p.birthday_day, p.birthday_month, p.birthday_year);
   const work = [p.extras.role, p.extras.company].filter(Boolean).join(", ");
@@ -149,10 +149,10 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </p>
       </section>
 
-      <MeetingTimeline personId={p.id} initial={meetings} />
+      <MeetingTimeline personId={p.id} initial={meetings} canAdd={usingSampleData()} />
 
       <div className="mt-10">
-        <DeletePersonButton name={p.full_name} />
+        <DeletePersonButton personId={p.id} name={p.full_name} />
       </div>
     </main>
   );

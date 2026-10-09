@@ -75,3 +75,34 @@ export function firstLine(text: string | null) {
 export function placeLine(p: { place_name: string | null; city: string | null; country: string | null }) {
   return [p.place_name, p.city].filter(Boolean).join(", ") || p.country || "Place not set";
 }
+
+// Minutes a time zone is ahead of UTC at a given instant (Dubai: 240).
+function zoneOffsetMinutes(utcMs: number, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).formatToParts(new Date(utcMs));
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return Math.round((asUtc - utcMs) / 60_000);
+}
+
+// "2026-10-06T21:42" read as a wall-clock time in a time zone (the one where
+// they met), back to an exact ISO instant. Without a zone, the phone's own.
+export function localInputToIso(local: string, timeZone: string | null) {
+  const [date, time = "00:00"] = local.split("T");
+  const [y, m, d] = date.split("-").map(Number);
+  const [h, min] = time.split(":").map(Number);
+  if (!timeZone) return new Date(y, m - 1, d, h, min).toISOString();
+  const wall = Date.UTC(y, m - 1, d, h, min);
+  // Twice, so a time near a daylight-saving change settles on the right offset.
+  let utc = wall - zoneOffsetMinutes(wall, timeZone) * 60_000;
+  utc = wall - zoneOffsetMinutes(utc, timeZone) * 60_000;
+  return new Date(utc).toISOString();
+}

@@ -2,8 +2,10 @@
 // only displayed, so it uses Mapbox's free temporary geocoding; the place that
 // is saved is looked up again, permanently, when the note is processed.
 // Coordinates travel in the body, never the URL, so they stay out of logs.
-// Mockup: development only. Real build: signed-in users only.
+// Signed-in users only (the proxy turns everyone else away); in the preview,
+// with no accounts, it's open in development only.
 import { z } from "zod";
+import { authConfigured } from "@/lib/auth/config";
 import { reverseGeocode } from "@/lib/geo/reverse-geocode";
 
 const Body = z.object({
@@ -12,7 +14,7 @@ const Body = z.object({
 });
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV === "production") return new Response("Not found", { status: 404 });
+  if (process.env.NODE_ENV === "production" && !authConfigured()) return new Response("Not found", { status: 404 });
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Send lat and lng as numbers." }, { status: 400 });

@@ -9,6 +9,7 @@ import { eventActions, takeAudio, useEventSession } from "@/components/capture/e
 import { PersonForm } from "@/components/person-form";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { formatDuration, formatMetDateTime } from "@/lib/format";
 import { mockDraft } from "@/lib/mock/people";
@@ -18,7 +19,15 @@ import type { Draft } from "@/lib/types";
 const noSubscribe = () => () => {};
 
 // Review for the note just recorded, or for one take from an event.
-export function ReviewScreen({ captureId, previewState }: { captureId: string | null; previewState: ReviewState | null }) {
+export function ReviewScreen({
+  captureId,
+  previewState,
+  people,
+}: {
+  captureId: string | null;
+  previewState: ReviewState | null;
+  people: Person[];
+}) {
   const event = useEventSession();
   // Takes live in the browser, so wait for it before deciding a take is gone.
   const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -64,6 +73,7 @@ export function ReviewScreen({ captureId, previewState }: { captureId: string | 
         key={draft.captureId + failed.join()}
         mode="review"
         initial={draft.person}
+        people={people}
         captureId={draft.captureId}
         transcript={draft.transcript}
         durationSeconds={draft.durationSeconds}

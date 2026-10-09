@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
@@ -21,8 +22,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { distanceKm, formatDistance, formatMetDate } from "@/lib/format";
 import type { LatLng } from "@/lib/map/geo";
 import { hasMapbox } from "@/lib/map/mapbox-style";
-import { getMockPerson, mockCurrentLocation, mockLaterMeetings } from "@/lib/mock/people";
-import type { Person } from "@/lib/types";
+import { locateOnce } from "@/lib/geo/locate";
+import { mockCurrentLocation } from "@/lib/mock/people";
+import type { Encounter, Person } from "@/lib/types";
 import { nextBirthday } from "@/lib/upcoming";
 import { cn } from "@/lib/utils";
 
@@ -42,12 +44,22 @@ type Mode =
 
 const RADII = [1, 5, 25];
 
-// Where "Near me" centres. Mockup: the sample position, so the sample people
-// are nearby. Real build: the phone's location (lib/geo/locate.ts).
-const HERE: LatLng = { lat: mockCurrentLocation.lat, lng: mockCurrentLocation.lng };
+// Where "Near me" centres in the preview: the sample position, so the sample
+// people are nearby. Otherwise the phone's own location.
+const SAMPLE_HERE: LatLng = { lat: mockCurrentLocation.lat, lng: mockCurrentLocation.lng };
 
-export function MapScreen({ people }: { people: Person[] }) {
+export function MapScreen({
+  people,
+  laterMeetings,
+  sample,
+}: {
+  people: Person[];
+  // Meetings after the first, for "also met there" in trip mode.
+  laterMeetings: Encounter[];
+  sample: boolean;
+}) {
   const [mode, setMode] = useState<Mode>({ kind: "cities" });
+  const [here, setHere] = useState<LatLng | null>(sample ? SAMPLE_HERE : null);
 
   const located = useMemo(
     () => people.filter((p): p is Person & LatLng => p.lat !== null && p.lng !== null),
@@ -107,13 +119,29 @@ export function MapScreen({ people }: { people: Person[] }) {
       const d = new Date(Date.now() + offset * 86_400_000);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
-    const city = cities.find((c) => c.city !== mockCurrentLocation.city)?.city ?? cities[0].city;
+    const city = (cities.find((c) => c.city !== mockCurrentLocation.city) ?? cities[0])?.city;
+    if (!city) {
+      toast("No cities yet", { description: "Save someone with a city first, then plan a trip there." });
+      return;
+    }
     showTrip(city, day(7), day(11));
   }
 
-  function showNear(radiusKm: number) {
+  async function showNear(radiusKm: number) {
+    let center = here;
+    if (!center) {
+      const result = await locateOnce();
+      if (!result.ok) {
+        toast(result.reason === "denied" ? "Location is off" : "Couldn’t find where you are", {
+          description: result.reason === "denied" ? "Allow location for this site to see who you know nearby." : "Try again in a moment.",
+        });
+        return;
+      }
+      center = { lat: result.fix.lat, lng: result.fix.lng };
+      setHere(center);
+    }
     setMode({ kind: "near", radiusKm });
-    move({ kind: "near", center: HERE, radiusKm });
+    move({ kind: "near", center, radiusKm });
   }
 
   function showPerson(id: string) {
@@ -121,18 +149,18 @@ export function MapScreen({ people }: { people: Person[] }) {
   }
 
   const nearby = useMemo(() => {
-    if (mode.kind !== "near") return [];
+    if (mode.kind !== "near" || !here) return [];
     return located
-      .map((p) => ({ person: p, km: distanceKm(HERE.lat, HERE.lng, p.lat, p.lng) }))
+      .map((p) => ({ person: p, km: distanceKm(here.lat, here.lng, p.lat, p.lng) }))
       .filter((r) => r.km <= mode.radiusKm)
       .sort((a, b) => a.km - b.km);
-  }, [located, mode]);
+  }, [located, mode, here]);
 
   const surface = {
     people: located,
     cities,
     selectedId: mode.kind === "person" ? mode.id : null,
-    near: mode.kind === "near" ? { center: HERE, radiusKm: mode.radiusKm } : null,
+    near: mode.kind === "near" && here ? { center: here, radiusKm: mode.radiusKm } : null,
     camera,
     onSelectPerson: showPerson,
     onSelectCity: showCity,
@@ -150,7 +178,7 @@ export function MapScreen({ people }: { people: Person[] }) {
           <div className="pointer-events-auto flex gap-2">
             <button
               type="button"
-              onClick={() => showNear(mode.kind === "near" ? mode.radiusKm : 5)}
+              onClick={() => void showNear(mode.kind === "near" ? mode.radiusKm : 5)}
               className={cn(
                 "flex h-11 items-center gap-2 rounded-full bg-background px-4 text-[0.95rem] font-medium shadow-md transition-colors",
                 mode.kind === "near" && "text-primary",
@@ -191,7 +219,7 @@ export function MapScreen({ people }: { people: Person[] }) {
           <CityPeople entry={cities.find((c) => c.city === mode.city)!} onBack={showCities} onSelect={showPerson} />
         )}
         {mode.kind === "near" && (
-          <NearMe radiusKm={mode.radiusKm} results={nearby} onRadius={showNear} onBack={showCities} />
+          <NearMe radiusKm={mode.radiusKm} results={nearby} onRadius={(r) => void showNear(r)} onBack={showCities} />
         )}
         {mode.kind === "trip" && (
           <TripPanel
@@ -199,6 +227,8 @@ export function MapScreen({ people }: { people: Person[] }) {
             from={mode.from}
             to={mode.to}
             cities={cities}
+            people={people}
+            laterMeetings={laterMeetings}
             onChange={showTrip}
             onBack={showCities}
             onSelect={showPerson}
@@ -314,6 +344,8 @@ function TripPanel({
   from,
   to,
   cities,
+  people: everyone,
+  laterMeetings,
   onChange,
   onBack,
   onSelect,
@@ -322,6 +354,8 @@ function TripPanel({
   from: string;
   to: string;
   cities: CityEntry[];
+  people: Person[];
+  laterMeetings: Encounter[];
   onChange: (city: string, from: string, to: string) => void;
   onBack: () => void;
   onSelect: (id: string) => void;
@@ -337,9 +371,12 @@ function TripPanel({
     return next !== null && next <= end;
   });
   // People recorded elsewhere whom you have also met in this city.
-  const alsoMetHere = mockLaterMeetings
+  const alsoMetHere = laterMeetings
     .filter((m) => m.city === city && !people.some((p) => p.id === m.person_id))
-    .map((m) => ({ meeting: m, person: getMockPerson(m.person_id)! }));
+    .flatMap((m) => {
+      const person = everyone.find((p) => p.id === m.person_id);
+      return person ? [{ meeting: m, person }] : [];
+    });
   const total = people.length + alsoMetHere.length;
 
   return (

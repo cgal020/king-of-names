@@ -9,28 +9,32 @@ import { ExportButtons } from "@/components/settings/export-buttons";
 import { ImportContacts } from "@/components/settings/import-contacts";
 import { MyCard } from "@/components/settings/my-card";
 import { Button } from "@/components/ui/button";
+import { createInvite } from "@/app/actions/settings";
 import { appConfig } from "@/lib/config";
-import { mockPeople } from "@/lib/mock/people";
+import type { Account, Invite } from "@/lib/data/account";
+import { formatShortDate } from "@/lib/format";
 import { knownTags } from "@/lib/tags";
+import type { Person } from "@/lib/types";
 
-// Tags in use with how many people carry each.
-const tagCounts = knownTags(mockPeople)
-  .map((tag) => ({ tag, count: mockPeople.filter((p) => p.tags.includes(tag)).length }))
-  .filter((t) => t.count > 0);
+export function SettingsScreen({ account, invites, people }: { account: Account; invites: Invite[]; people: Person[] }) {
+  const [codes, setCodes] = useState(invites);
+  const [making, setMaking] = useState(false);
+  // Tags in use with how many people carry each.
+  const tagCounts = knownTags(people)
+    .map((tag) => ({ tag, count: people.filter((p) => p.tags.includes(tag)).length }))
+    .filter((t) => t.count > 0);
 
-const SAMPLE_CODES = [
-  { code: "M4QK-7XRT-9PWD", usedBy: "sarah_k", usedAt: "12 Sep 2026" },
-  { code: "H2NB-5CJV-3TQE", usedBy: null, usedAt: null },
-];
-
-function randomCode() {
-  const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-  const pick = () => alphabet[Math.floor(Math.random() * alphabet.length)];
-  return [0, 1, 2].map(() => Array.from({ length: 4 }, pick).join("")).join("-");
-}
-
-export function SettingsScreen() {
-  const [codes, setCodes] = useState(SAMPLE_CODES);
+  async function newCode() {
+    setMaking(true);
+    const result = await createInvite().catch(() => ({ ok: false as const, error: "Couldn’t make a code. Try again." }));
+    setMaking(false);
+    if (!result.ok) {
+      toast.error(result.error);
+      return;
+    }
+    setCodes((list) => [{ code: result.code, usedBy: null, usedAt: null }, ...list]);
+    void copy(result.code);
+  }
 
   // Copies a link that opens sign-up with the code filled in.
   async function copy(code: string) {
@@ -47,9 +51,9 @@ export function SettingsScreen() {
     <div className="space-y-10 pb-10">
       <Section title="Account">
         <dl className="divide-y border-y">
-          <Row label="Username" value="cameron" />
-          <Row label="Name" value="Cameron Gallagher" />
-          <Row label="Email" value="cameron@example.com" />
+          <Row label="Username" value={account.username} />
+          {account.displayName && <Row label="Name" value={account.displayName} />}
+          {account.email && <Row label="Email" value={account.email} />}
         </dl>
       </Section>
 
@@ -59,11 +63,11 @@ export function SettingsScreen() {
       >
         <MyCard
           initial={{
-            full_name: "Cameron Gallagher",
+            full_name: account.displayName ?? "",
             company: "",
             role: "",
             phone: "",
-            email: "cameron@example.com",
+            email: account.email ?? "",
           }}
         />
       </Section>
@@ -92,7 +96,7 @@ export function SettingsScreen() {
               <span>
                 <span className="block font-mono text-[0.95rem] tracking-wide">{c.code}</span>
                 <span className="block text-sm text-muted-foreground">
-                  {c.usedBy ? `Used by @${c.usedBy}, ${c.usedAt}` : "Not used yet"}
+                  {c.usedBy ? `Used by @${c.usedBy}${c.usedAt ? `, ${formatShortDate(c.usedAt.slice(0, 10))}` : ""}` : "Not used yet"}
                 </span>
               </span>
               {!c.usedBy && (
@@ -113,13 +117,10 @@ export function SettingsScreen() {
           variant="outline"
           size="touch-lg"
           className="mt-4 w-full"
-          onClick={() => {
-            const code = randomCode();
-            setCodes((list) => [{ code, usedBy: null, usedAt: null }, ...list]);
-            void copy(code);
-          }}
+          disabled={making}
+          onClick={() => void newCode()}
         >
-          New invite code
+          {making ? "Making a code…" : "New invite code"}
         </Button>
       </Section>
 

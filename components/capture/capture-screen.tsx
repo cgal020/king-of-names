@@ -28,6 +28,7 @@ import { usePhotosFor } from "@/components/photos/photo-store";
 import { setRecordingChrome } from "@/components/tab-bar";
 import { buttonVariants } from "@/components/ui/button";
 import { Wordmark } from "@/components/wordmark";
+import { authConfigured } from "@/lib/auth/config";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { describeWait } from "@/lib/captures/rate-limit";
@@ -426,6 +427,8 @@ function DraftPhotos({ photos }: { photos: Photo[] }) {
 function NeedsReview({ event }: { event: EventSession | null }) {
   const takes = openTakes(event);
   const fromEvent = event && takes.length > 0;
+  // The sample note is for the preview only.
+  if (!fromEvent && authConfigured()) return null;
   return (
     <Link
       href={fromEvent ? "/capture/event" : "/capture/review"}

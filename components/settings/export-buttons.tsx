@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { DownloadIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { exportFileName, peopleToCsv, peopleToJson } from "@/lib/export/people";
-import { getMockMeetings, mockPeople } from "@/lib/mock/people";
+import { exportPeople } from "@/app/actions/settings";
 
 const FORMATS = [
   { format: "csv", label: "Export CSV", type: "text/csv" },
@@ -27,11 +27,16 @@ async function deliver(file: File) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// Mockup: exports the sample people. The real app fetches the signed-in
-// user's people from the server, which builds the same files.
+// Fetches everyone fresh from the server, then builds the file on the phone.
 export function ExportButtons() {
   async function exportAs({ format, type }: (typeof FORMATS)[number]) {
-    const people = mockPeople.map((person) => ({ ...person, meetings: getMockMeetings(person.id) }));
+    let people;
+    try {
+      people = await exportPeople();
+    } catch {
+      toast.error("Couldn’t load your people. Check your connection and try again.");
+      return;
+    }
     const content = format === "csv" ? peopleToCsv(people) : peopleToJson(people);
     try {
       await deliver(new File([content], exportFileName(format), { type }));
