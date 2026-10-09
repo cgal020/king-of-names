@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ChevronDownIcon, CopyIcon } from "lucide-react";
-import { ConfirmButton } from "@/components/confirm-button";
+import { AccountActions } from "@/components/settings/account-actions";
 import { AiConnectors } from "@/components/settings/ai-connectors";
 import { ExportButtons } from "@/components/settings/export-buttons";
 import { ImportContacts } from "@/components/settings/import-contacts";
@@ -31,15 +30,16 @@ function randomCode() {
 }
 
 export function SettingsScreen() {
-  const router = useRouter();
   const [codes, setCodes] = useState(SAMPLE_CODES);
 
+  // Copies a link that opens sign-up with the code filled in.
   async function copy(code: string) {
+    const link = `${window.location.origin}/signup?code=${encodeURIComponent(code)}`;
     try {
-      await navigator.clipboard.writeText(code);
-      toast.success("Invite code copied");
+      await navigator.clipboard.writeText(link);
+      toast.success("Invite link copied", { description: "It opens sign-up with the code filled in." });
     } catch {
-      toast("Copy didn't work", { description: code });
+      toast("Copy didn't work", { description: link });
     }
   }
 
@@ -99,7 +99,7 @@ export function SettingsScreen() {
                 <Button
                   variant="ghost"
                   size="icon-touch"
-                  aria-label={`Copy ${c.code}`}
+                  aria-label={`Copy invite link for ${c.code}`}
                   onClick={() => copy(c.code)}
                   className="-mr-2 text-primary"
                 >
@@ -195,28 +195,7 @@ export function SettingsScreen() {
         </div>
       </Section>
 
-      <div className="space-y-2">
-        <Button
-          variant="outline"
-          size="touch-lg"
-          className="w-full"
-          onClick={() => toast("Signed out", { description: "Preview only." })}
-        >
-          Sign out
-        </Button>
-        <ConfirmButton
-          label="Delete my account"
-          title="Delete your account?"
-          description="Every person, note and recording will be permanently deleted. Export first if you want a copy."
-          confirmLabel="Delete everything"
-          variant="ghost"
-          className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onConfirm={() => {
-            toast("Account deleted", { description: "Preview only. Nothing was removed." });
-            router.push("/capture");
-          }}
-        />
-      </div>
+      <AccountActions />
     </div>
   );
 }

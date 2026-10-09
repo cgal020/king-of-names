@@ -44,6 +44,7 @@ phone, use a Vercel preview deployment.
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard |
 | `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding: the stored place (permanent geocoding, needs a card on the Mapbox account) and the place shown while recording (temporary, free tier) |
 | `NEXT_PUBLIC_APP_NAME` | browser and server | Display name, defaults to King of Names |
+| `NEXT_PUBLIC_SITE_URL` | server | The app's public address, used in password reset links. Optional locally |
 
 ## Database
 
@@ -129,3 +130,10 @@ the Supabase project in `ap-southeast-1`.
 3. Apply migrations to the production Supabase project (see [Database](#database)).
 4. In Supabase Auth settings, set the Site URL to the production URL and add
    the preview URL pattern to the redirect allow list.
+5. In Supabase Authentication > Sign In / Providers, turn off "Allow new users
+   to sign up". Accounts are created by the server after it checks the invite
+   code; leaving public sign-up on would let anyone with the public key skip
+   the invite.
+6. Set custom SMTP (Resend) under Authentication > Emails, and change the
+   "Reset password" template's link to
+   `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.

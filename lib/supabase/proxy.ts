@@ -2,13 +2,14 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Refreshes the Supabase session cookie on every request so Server Components
-// always see a valid session. Returns the response plus the signed-in user id.
+// always see a valid session. Returns the response, the signed-in user id, and
+// whether Supabase is configured at all.
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   // Lets the empty shell run before Supabase is configured.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return { response, userId: null };
+    return { response, userId: null, configured: false };
   }
 
   const supabase = createServerClient(
@@ -35,5 +36,5 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub ?? null;
 
-  return { response, userId };
+  return { response, userId, configured: true };
 }
