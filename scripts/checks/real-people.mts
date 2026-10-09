@@ -106,6 +106,12 @@ try {
   await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
   pass("search finds them by a word only in their notes");
 
+  await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
+  await page.getByLabel("Your question").fill("Who breeds flamingos?");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible({ timeout: 30_000 });
+  pass("Ask AI answers from their saved people and links the person it used");
+
   const pins = await (await page.request.get(BASE + "/api/map")).json();
   expect(pins.features).toHaveLength(1); // before the card test adds a second person
   expect(Object.keys(pins.features[0].properties).sort()).toEqual(["city", "id", "initials", "met_at", "name"]);

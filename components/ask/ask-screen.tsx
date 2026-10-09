@@ -9,9 +9,10 @@ import { ScreenHeader } from "@/components/screen-header";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { SUGGESTED_QUESTIONS } from "@/lib/ask/question";
 import type { Person } from "@/lib/types";
+import { authConfigured } from "@/lib/auth/config";
 import { cn } from "@/lib/utils";
 
-type Entry = { id: number; question: string };
+type Entry = { id: number; question: string; answer?: string };
 
 export function AskScreen({ people }: { people: Person[] }) {
   const { pending, setPending } = useAskStore();
@@ -100,8 +101,15 @@ export function AskScreen({ people }: { people: Person[] }) {
         </section>
       ) : (
         <div className="divide-y" aria-live="polite">
-          {entries.map((e) => (
-            <AskAnswer key={e.id} question={e.question} people={people} onAsk={ask} />
+          {entries.map((e, i) => (
+            <AskAnswer
+              key={e.id}
+              question={e.question}
+              people={people}
+              history={entries.slice(0, i).flatMap((prev) => (prev.answer ? [{ question: prev.question, answer: prev.answer }] : []))}
+              onAsk={ask}
+              onAnswered={(answer) => setEntries((list) => list.map((x) => (x.id === e.id ? { ...x, answer } : x)))}
+            />
           ))}
         </div>
       )}
@@ -126,18 +134,21 @@ export function AskScreen({ people }: { people: Person[] }) {
                 aria-label="Your question"
                 className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-[1.0625rem] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
-              <button
-                type="button"
-                onClick={() => setListening(true)}
-                aria-label="Ask with your voice"
-                aria-pressed={listening}
-                className={cn(
-                  "absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
-                  listening ? "animate-pulse text-primary" : "text-muted-foreground",
-                )}
-              >
-                <MicIcon className="size-5" />
-              </button>
+              {/* Preview only until voice questions are transcribed. */}
+              {!authConfigured() && (
+                <button
+                  type="button"
+                  onClick={() => setListening(true)}
+                  aria-label="Ask with your voice"
+                  aria-pressed={listening}
+                  className={cn(
+                    "absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
+                    listening ? "animate-pulse text-primary" : "text-muted-foreground",
+                  )}
+                >
+                  <MicIcon className="size-5" />
+                </button>
+              )}
             </div>
             <Button type="submit" size="icon-touch" aria-label="Ask" disabled={!text.trim()} className="size-12 rounded-xl">
               <ArrowUpIcon />
