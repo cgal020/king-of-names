@@ -5,6 +5,7 @@ import { z } from "zod";
 import { askAboutPeople } from "@/lib/ai/ask";
 import { authConfigured } from "@/lib/auth/config";
 import { listLaterMeetings, listPeople } from "@/lib/data/people";
+import { listOpenTasks } from "@/lib/data/tasks";
 import { createClient } from "@/lib/supabase/server";
 
 export const maxDuration = 30;
@@ -36,12 +37,12 @@ export async function POST(request: Request) {
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ error: "Ask a question of up to 300 characters." }, { status: 400 });
 
-  const [people, laterMeetings] = await Promise.all([listPeople(), listLaterMeetings()]);
+  const [people, laterMeetings, tasks] = await Promise.all([listPeople(), listLaterMeetings(), listOpenTasks()]);
   if (!people.length) {
     return Response.json({ answer: "You haven’t saved anyone yet, so there’s nothing to search.", people: [], followUps: [] });
   }
   try {
-    const result = await askAboutPeople({ ...parsed.data, people, laterMeetings, now: new Date() });
+    const result = await askAboutPeople({ ...parsed.data, people, laterMeetings, tasks, now: new Date() });
     return Response.json(result, { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("ask failed", { name: (error as Error).name, status: (error as { status?: number }).status ?? null });

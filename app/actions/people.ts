@@ -126,3 +126,24 @@ export async function setFollowUp(
   return { ok: true };
 }
 
+// A quick note from the profile, added to their notes with today's date
+// ("9 Oct 2026 · Moved to Singapore"), so search, Ask and export see it.
+export async function addNote(id: string, text: string, dateLabel: string): Promise<{ ok: true; notes: string } | { ok: false; error: string }> {
+  const note = typeof text === "string" ? text.trim() : "";
+  if (!note) return { ok: false, error: "Write the note first." };
+  const label = typeof dateLabel === "string" ? dateLabel.trim().slice(0, 40) : "";
+  const entry = label ? `${label} · ${note}` : note;
+  if (usingSampleData()) return { ok: true, notes: entry };
+  if (!isPersonId(id)) return { ok: false, error: "This person no longer exists." };
+  const supabase = await createClient();
+  const { data: person } = await supabase.from("people").select("notes").eq("id", id).maybeSingle();
+  if (!person) return { ok: false, error: "This person no longer exists." };
+  const notes = [person.notes as string | null, entry].filter(Boolean).join("\n\n");
+  if (notes.length > 5000) return { ok: false, error: "Their notes are full. Edit them to make room." };
+  const { error } = await supabase.from("people").update({ notes }).eq("id", id);
+  if (error) return { ok: false, error: NOT_SAVED };
+  revalidatePath("/people");
+  revalidatePath(`/people/${id}`);
+  return { ok: true, notes };
+}
+

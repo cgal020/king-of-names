@@ -5,6 +5,8 @@ import { DeletePersonButton } from "@/components/delete-person-button";
 import { FollowUpCard } from "@/components/follow-up-card";
 import { MiniMap } from "@/components/map/mini-map";
 import { MeetingTimeline } from "@/components/meeting-timeline";
+import { PersonNotes } from "@/components/person-notes";
+import { PersonTasks } from "@/components/person-tasks";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { PersonPhotos } from "@/components/photos/person-photos";
 import { SaveContactButton } from "@/components/save-contact-button";
@@ -13,6 +15,7 @@ import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { lineLink, whatsappLink } from "@/lib/contacts/message-links";
 import { getPerson, listMeetings } from "@/lib/data/people";
+import { listTasksFor } from "@/lib/data/tasks";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +29,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const p = await getPerson(id);
   if (!p) notFound();
 
-  const meetings = await listMeetings(p);
+  const [meetings, tasks] = await Promise.all([listMeetings(p), listTasksFor(p.id)]);
   const latest = meetings[0];
   const birthday = formatBirthday(p.birthday_day, p.birthday_month, p.birthday_year);
   const work = [p.extras.role, p.extras.company].filter(Boolean).join(", ");
@@ -116,12 +119,9 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
 
       <FollowUpCard person={p} />
 
-      {p.notes && (
-        <section className="mt-8">
-          <h2 className="type-section mb-2">Notes</h2>
-          <p className="max-w-[65ch] text-[1.0625rem] leading-relaxed text-pretty">{p.notes}</p>
-        </section>
-      )}
+      <PersonTasks personId={p.id} initial={tasks} />
+
+      <PersonNotes personId={p.id} initial={p.notes} />
 
       <section className="mt-8">
         <h2 className="type-section mb-2">Photos</h2>

@@ -253,6 +253,17 @@ describe("row level security between two accounts", () => {
     expect(own.data?.destination).toEqual({ purpose: "whatsapp", phone: "971555550142" });
   });
 
+  it("hides another user's tasks and blocks adding one to their person", async () => {
+    const { data: task, error } = await a.client.from("tasks").insert({ person_id: personId, title: "Send the deck" }).select("id").single();
+    expect(error).toBeNull();
+    const seen = await b.client.from("tasks").select("*").eq("id", task!.id);
+    expect(seen.data).toEqual([]);
+    const ticked = await b.client.from("tasks").update({ done_at: new Date().toISOString() }).eq("id", task!.id).select();
+    expect(ticked.data ?? []).toEqual([]);
+    const planted = await b.client.from("tasks").insert({ person_id: personId, title: "Planted" });
+    expect(planted.error).not.toBeNull();
+  });
+
   it("lets only the server count scans", async () => {
     const counted = await b.client.rpc("count_qr_scan", { scanned_slug: qrSlug });
     expect(counted.error?.code).toBe("42501");

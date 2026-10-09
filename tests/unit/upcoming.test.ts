@@ -37,6 +37,28 @@ describe("upcoming", () => {
     expect([d.getFullYear(), d.getMonth() + 1, d.getDate()]).toEqual([2027, 2, 28]);
   });
 
+  it("lists due tasks, but not done ones or ones without a date", () => {
+    const p = person({ full_name: "Has tasks" });
+    const task = (title: string, due_date: string | null, done_at: string | null = null) => ({
+      id: crypto.randomUUID(),
+      person_id: p.id,
+      title,
+      due_date,
+      done_at,
+      created_at: "2026-10-01T00:00:00Z",
+    });
+    const items = upcoming([p], today, 42, Infinity, [
+      task("Send the deck", "2026-10-05"),
+      task("Book lunch", "2026-10-20"),
+      task("Already done", "2026-10-08", "2026-10-06T10:00:00Z"),
+      task("Someday", null),
+    ]);
+    expect(items.map((i) => [i.kind, i.task?.title, i.inDays])).toEqual([
+      ["task", "Send the deck", -2],
+      ["task", "Book lunch", 13],
+    ]);
+  });
+
   it("snoozes a follow-up to a week from today", () => {
     expect(snoozedDate(today)).toBe("2026-10-14");
     expect(snoozedDate(new Date(2026, 11, 28))).toBe("2027-01-04");

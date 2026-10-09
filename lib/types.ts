@@ -88,3 +88,14 @@ export type Encounter = {
   // A short-lived link to the recording, when there is one.
   audio_url?: string | null;
 };
+
+// Something to do for a person: a task or reminder, with an optional due date.
+export type Task = {
+  id: string;
+  person_id: string;
+  title: string;
+  // YYYY-MM-DD, or null for "whenever".
+  due_date: string | null;
+  done_at: string | null;
+  created_at: string;
+};

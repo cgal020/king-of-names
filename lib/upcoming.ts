@@ -1,10 +1,12 @@
 // Birthdays and follow-ups coming up soon: the in-app list that backs up
 // push reminders (which iOS only delivers to installed apps, unreliably).
-import type { Person } from "@/lib/types";
+import type { Person, Task } from "@/lib/types";
 
 export type UpcomingItem = {
   person: Person;
-  kind: "birthday" | "follow_up";
+  kind: "birthday" | "follow_up" | "task";
+  // The task, for kind "task".
+  task?: Task;
   // Calendar date as YYYY-MM-DD.
   date: string;
   // Whole days from today; negative when a follow-up is overdue.
@@ -34,8 +36,15 @@ export function nextBirthday(month: number, day: number, today: Date) {
 }
 
 // Overdue follow-ups stay until they're marked done or snoozed.
-export function upcoming(people: Person[], today: Date, withinDays = 42, overdueDays = Infinity): UpcomingItem[] {
+export function upcoming(people: Person[], today: Date, withinDays = 42, overdueDays = Infinity, tasks: Task[] = []): UpcomingItem[] {
   const items: UpcomingItem[] = [];
+  const byId = new Map(people.map((p) => [p.id, p]));
+  for (const task of tasks) {
+    const person = byId.get(task.person_id);
+    if (!person || task.done_at || !task.due_date) continue;
+    const inDays = daysUntil(task.due_date, today);
+    if (inDays <= withinDays && inDays >= -overdueDays) items.push({ person, kind: "task", task, date: task.due_date, inDays });
+  }
   for (const person of people) {
     if (person.birthday_month && person.birthday_day) {
       const next = nextBirthday(person.birthday_month, person.birthday_day, today);

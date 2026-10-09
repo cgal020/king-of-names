@@ -3,14 +3,14 @@
 // it), company, role, email, tags, the follow-up, and what you noted when you
 // met again. Phone numbers match by digits, so "0917" finds +63 917.
 import { placeAliases } from "@/lib/geo/places";
-import type { Encounter, Person } from "@/lib/types";
+import type { Encounter, Person, Task } from "@/lib/types";
 
 // Case- and accent-insensitive, so "jose" finds "José".
 export const fold = (text: string) => text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
 
 export type SearchEntry = { text: string; digits: string };
 
-export function searchEntry(person: Person, laterMeetings: Encounter[] = []): SearchEntry {
+export function searchEntry(person: Person, laterMeetings: Encounter[] = [], tasks: Task[] = []): SearchEntry {
   const later = laterMeetings.filter((m) => m.person_id === person.id);
   const places = [person.place_name, person.city, person.region, person.country, ...later.flatMap((m) => [m.place_name, m.city])];
   const text = [
@@ -23,6 +23,7 @@ export function searchEntry(person: Person, laterMeetings: Encounter[] = []): Se
     ...person.tags,
     person.follow_up_note,
     ...later.flatMap((m) => [m.note, m.where_met_text]),
+    ...tasks.filter((t) => t.person_id === person.id && !t.done_at).map((t) => t.title),
   ]
     .filter(Boolean)
     .join(" ");

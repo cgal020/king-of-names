@@ -10,7 +10,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import { resolveCitations } from "@/lib/ask/citations";
 import { peopleBlock } from "@/lib/ask/people-block";
-import type { Encounter, Person } from "@/lib/types";
+import type { Encounter, Person, Task } from "@/lib/types";
 
 export class AskError extends Error {}
 
@@ -54,6 +54,7 @@ export async function askAboutPeople({
   history,
   people,
   laterMeetings,
+  tasks = [],
   now,
   timeZone,
 }: {
@@ -62,12 +63,14 @@ export async function askAboutPeople({
   history: AskTurn[];
   people: Person[];
   laterMeetings: Encounter[];
+  // Open tasks, so "what do I owe Daniel?" can be answered.
+  tasks?: Task[];
   now: Date;
   timeZone: string | null;
 }): Promise<AskResult> {
   const id = model();
   if (!id) throw new AskError("ASK_MODEL or EXTRACTION_MODEL is not set");
-  const block = peopleBlock(people, laterMeetings);
+  const block = peopleBlock(people, laterMeetings, tasks);
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: timeZone ?? undefined, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 
   const response = await anthropic().messages.parse({

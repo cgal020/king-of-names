@@ -15,6 +15,16 @@ describe("peopleBlock", () => {
     for (const p of mockPeople) expect(block).not.toContain(`id: ${p.id}`);
   });
 
+  it("tells Ask about open tasks", () => {
+    const p = mockPeople[0];
+    const { text } = peopleBlock(mockPeople, mockLaterMeetings, [
+      { id: "t1", person_id: p.id, title: "Introduce to Omar", due_date: "2026-10-20", done_at: null, created_at: "2026-10-01T00:00:00Z" },
+      { id: "t2", person_id: p.id, title: "Done already", due_date: null, done_at: "2026-10-02T00:00:00Z", created_at: "2026-10-01T00:00:00Z" },
+    ]);
+    expect(text).toContain("to do: Introduce to Omar (due 2026-10-20)");
+    expect(text).not.toContain("Done already");
+  });
+
   it("leaves out phone numbers and email addresses", () => {
     for (const p of mockPeople) {
       if (p.phone) expect(block).not.toContain(p.phone);

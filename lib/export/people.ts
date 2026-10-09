@@ -4,9 +4,9 @@
 // files in private storage and aren't included.
 import { appConfig } from "@/lib/config";
 import { monthName } from "@/lib/format";
-import type { Encounter, Person } from "@/lib/types";
+import type { Encounter, Person, Task } from "@/lib/types";
 
-export type ExportPerson = Person & { meetings: Encounter[] };
+export type ExportPerson = Person & { meetings: Encounter[]; tasks?: Task[] };
 
 const KNOWN_EXTRAS = new Set(["email", "company", "role"]);
 
@@ -67,6 +67,8 @@ const COLUMNS: [string, (p: ExportPerson) => string | number | null | undefined]
   ["Notes", (p) => p.notes],
   ["Follow-up", (p) => p.follow_up_note],
   ["Follow-up date", (p) => p.follow_up_date],
+  ["Tasks", (p) => (p.tasks ?? []).map((t) => (t.due_date ? `${t.title} (due ${t.due_date})` : t.title)).join("; ")],
+  ["Imported", (p) => p.imported_at ?? null],
   ["Other details", (p) =>
     Object.entries(p.extras)
       .filter(([key, value]) => value && !KNOWN_EXTRAS.has(key))

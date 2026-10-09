@@ -148,6 +148,39 @@ try {
   await expect(page.getByRole("link", { name: `WhatsApp ${name}` })).toHaveAttribute("href", "https://wa.me/971505550199");
   pass("a profile shows the number and a WhatsApp button for it");
 
+  // Notes and tasks, straight from the profile.
+  await page.getByRole("button", { name: "Add a note" }).click();
+  await page.locator("#new-note").fill("Prefers WhatsApp to email.");
+  await page.getByRole("button", { name: "Add note" }).click();
+  await expect(page.getByText("Note added")).toBeVisible();
+  await expect(page.getByText(/· Prefers WhatsApp to email\./)).toBeVisible();
+  const { data: noted } = await admin.from("people").select("notes").eq("id", personId).single();
+  expect(noted?.notes).toMatch(/^Breeds pink flamingos near the Marina\. Wants a Bangkok intro\.\n\n\d{1,2} \w{3,4} \d{4} · Prefers WhatsApp to email\.$/);
+  pass("a dated note is added from the profile, after the notes already there");
+
+  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  for (const [title, due] of [["Send the flamingo brochure", yesterday], ["Book a call about Bangkok", ""]]) {
+    await page.getByRole("button", { name: "Add a task" }).click();
+    await page.getByLabel("What to do").fill(title);
+    if (due) await page.getByLabel(/Remind me on/).fill(due);
+    await page.getByRole("button", { name: "Add task" }).click();
+    await expect(page.getByText(title)).toBeVisible();
+  }
+  const { data: tasks } = await admin.from("tasks").select("title, due_date, done_at").eq("user_id", userId).order("created_at");
+  expect(tasks).toEqual([
+    { title: "Send the flamingo brochure", due_date: yesterday, done_at: null },
+    { title: "Book a call about Bangkok", due_date: null, done_at: null },
+  ]);
+  await page.goto(BASE + "/people", { waitUntil: "networkidle" });
+  await expect(page.getByText("Send the flamingo brochure")).toBeVisible();
+  await page.getByRole("button", { name: "Mark “Send the flamingo brochure” done" }).click();
+  await expect(page.getByText("Task done")).toBeVisible();
+  await expect.poll(async () => (await admin.from("tasks").select("done_at").eq("user_id", userId).eq("title", "Send the flamingo brochure").single()).data?.done_at ?? null).not.toBeNull();
+  await page.reload({ waitUntil: "networkidle" });
+  await page.getByLabel("Search people").fill("call about bangkok");
+  await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
+  pass("tasks are added from the profile, a due one shows in Coming up and is ticked off there, and search finds open ones");
+
   await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
   await page.getByLabel("Your question").fill("Who breeds flamingos?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();

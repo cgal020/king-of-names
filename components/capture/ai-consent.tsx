@@ -87,7 +87,7 @@ export function AiProviderList({ className }: { className?: string }) {
       </li>
       <li>
         <span className="font-medium">Ask AI questions</span> go to Anthropic with a summary of your people to answer
-        from: names, where and when you met, work, tags, notes and follow-ups. Never their phone numbers or emails.
+        from: names, where and when you met, work, tags, notes, follow-ups and tasks. Never their phone numbers or emails.
       </li>
       <li>
         <span className="font-medium">Your location</span> goes to Mapbox to find the place name.

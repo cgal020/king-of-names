@@ -12,7 +12,7 @@ import { looksLikeQuestion } from "@/lib/ask/question";
 import { firstLine, formatMetDate, formatMonthGroup } from "@/lib/format";
 import { matchesSearch, searchEntry } from "@/lib/people/search";
 import { knownTags, relationshipLabel, type Relationship } from "@/lib/tags";
-import type { Encounter, Person } from "@/lib/types";
+import type { Encounter, Person, Task } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WHEN_OPTIONS = [
@@ -36,7 +36,15 @@ function matchesWhen(iso: string, when: When) {
   return date.getFullYear() < year - 1;
 }
 
-export function PeopleList({ people, laterMeetings = [] }: { people: Person[]; laterMeetings?: Encounter[] }) {
+export function PeopleList({
+  people,
+  laterMeetings = [],
+  tasks = [],
+}: {
+  people: Person[];
+  laterMeetings?: Encounter[];
+  tasks?: Task[];
+}) {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
@@ -59,7 +67,7 @@ export function PeopleList({ people, laterMeetings = [] }: { people: Person[]; l
   const tags = useMemo(() => knownTags(people).filter((t) => people.some((p) => p.tags.includes(t))), [people]);
 
   // What search looks through for each person, built once per list.
-  const index = useMemo(() => new Map(people.map((p) => [p.id, searchEntry(p, laterMeetings)])), [people, laterMeetings]);
+  const index = useMemo(() => new Map(people.map((p) => [p.id, searchEntry(p, laterMeetings, tasks)])), [people, laterMeetings, tasks]);
 
   const results = useMemo(() => {
     return people
@@ -155,7 +163,7 @@ export function PeopleList({ people, laterMeetings = [] }: { people: Person[]; l
       </div>
 
       {isQuestion && <AskRow question={query} onAsk={askAi} />}
-      {!filtered && <ComingUp people={people} />}
+      {!filtered && <ComingUp people={people} tasks={tasks} />}
 
       <p className="sr-only" aria-live="polite">
         {results.length} {results.length === 1 ? "person" : "people"}

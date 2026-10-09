@@ -8,6 +8,7 @@ import type { CardDetails } from "@/lib/cards/parse-qr";
 import { fillsAnything, matchContact, missingDetails, type Fill } from "@/lib/contacts/match";
 import { currentUserId } from "@/lib/data/account";
 import { listMeetings, listPeople } from "@/lib/data/people";
+import { listOpenTasks } from "@/lib/data/tasks";
 import type { ExportPerson } from "@/lib/export/people";
 import { generateInviteCode } from "@/lib/invite-code";
 import { isPersonId, PersonInputSchema, type PersonInput } from "@/lib/people/validate";
@@ -40,10 +41,12 @@ export async function createInvite(): Promise<{ ok: true; code: string } | { ok:
   return { ok: true, code };
 }
 
-// Everyone with every meeting, for the CSV and JSON export.
+// Everyone with every meeting and their open tasks, for the CSV and JSON export.
 export async function exportPeople(): Promise<ExportPerson[]> {
-  const people = await listPeople();
-  return Promise.all(people.map(async (person) => ({ ...person, meetings: await listMeetings(person) })));
+  const [people, tasks] = await Promise.all([listPeople(), listOpenTasks()]);
+  return Promise.all(
+    people.map(async (person) => ({ ...person, meetings: await listMeetings(person), tasks: tasks.filter((t) => t.person_id === person.id) })),
+  );
 }
 
 // A contact becomes a person with no place, dated with the import: the file

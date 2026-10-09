@@ -96,6 +96,16 @@ describe("People search", () => {
     expect(finds("legazpi")).toBe(true);
   });
 
+  it("finds them by an open task, not a done one", () => {
+    const tasks = [
+      { id: "t1", person_id: person.id, title: "Send the Abu Dhabi warehouse list", due_date: null, done_at: null, created_at: "2026-10-01T00:00:00Z" },
+      { id: "t2", person_id: person.id, title: "Old errand", due_date: null, done_at: "2026-10-02T00:00:00Z", created_at: "2026-10-01T00:00:00Z" },
+    ];
+    const withTasks = searchEntry(person, later, tasks);
+    expect(matchesSearch(withTasks, "warehouse list")).toBe(true);
+    expect(matchesSearch(withTasks, "old errand")).toBe(false);
+  });
+
   it("still needs every word to match", () => {
     expect(finds("aisha investor")).toBe(true);
     expect(finds("aisha bangkok")).toBe(false);

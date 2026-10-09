@@ -219,7 +219,7 @@ export function SettingsScreen({
           </p>
           <p>
             When you use Ask AI, your question is sent to Anthropic with a summary of all your people to answer
-            from: their names, where and when you met, work, tags, notes, follow-ups, birthdays and later meetings.
+            from: their names, where and when you met, work, tags, notes, follow-ups and tasks, birthdays and later meetings.
             Their phone numbers and email addresses are never included. Nothing else about you is sent to these
             providers.
           </p>
