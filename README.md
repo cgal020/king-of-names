@@ -142,7 +142,10 @@ the Supabase project in `ap-south-1`.
 2. Add every variable from `.env.example` for Production and Preview.
 3. Apply migrations to the production Supabase project (see [Database](#database)).
 4. In Supabase Auth settings, set the Site URL to the production URL and add
-   the preview URL pattern to the redirect allow list.
+   the preview URL pattern to the redirect allow list. Production uses
+   `https://kingofnames.app` and allows `https://kingofnames.app/**`,
+   `https://king-of-names-*-king-of-names.vercel.app/**` (previews) and
+   `http://localhost:3000/**`.
 5. In Supabase Authentication > Sign In / Providers, turn off "Allow new users
    to sign up". Accounts are created by the server after it checks the invite
    code; leaving public sign-up on would let anyone with the public key skip
@@ -150,3 +153,7 @@ the Supabase project in `ap-south-1`.
 6. Set custom SMTP (Resend) under Authentication > Emails, and change the
    "Reset password" template's link to
    `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.
+   Mail goes out from `mail.kingofnames.app`, verified in Resend with its DNS
+   records on Vercel: host `smtp.resend.com`, port `465`, username `resend`,
+   password a Resend API key with sending access to that domain only, sender
+   `no-reply@mail.kingofnames.app`, name "King of Names".
