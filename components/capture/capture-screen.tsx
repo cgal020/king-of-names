@@ -237,6 +237,7 @@ export function CaptureScreen() {
       recordedAt: new Date(startedAt.current).toISOString(),
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       location: located.ok ? { lat: located.fix.lat, lng: located.fix.lng, accuracyM: located.fix.accuracyM } : null,
+      ...(quickTake ? { eventId: currentEvent()?.id } : {}),
       attempts: 0,
       lastError: null,
     };

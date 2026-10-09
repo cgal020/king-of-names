@@ -30,6 +30,8 @@ const Fields = z
     lat: optionalNumber(-90, 90),
     lng: optionalNumber(-180, 180),
     accuracy_m: optionalNumber(0, 100_000),
+    // An Event Mode take: the event it belongs to.
+    event_id: z.preprocess((v) => (v === "" ? undefined : v), z.uuid().optional()),
   })
   .refine((f) => (f.lat === undefined) === (f.lng === undefined), { message: "lat and lng go together" });
 
@@ -41,6 +43,7 @@ export type CaptureUpload = {
   recordedAt: string;
   timezone: string | null;
   location: { lat: number; lng: number; accuracyM: number | null } | null;
+  eventId: string | null;
 };
 
 export type UploadRejection = { status: 400 | 413 | 415; message: string };
@@ -78,6 +81,7 @@ export function validateCaptureUpload(
       recordedAt: new Date(recorded).toISOString(),
       timezone: f.timezone ?? null,
       location: f.lat !== undefined && f.lng !== undefined ? { lat: f.lat, lng: f.lng, accuracyM: f.accuracy_m ?? null } : null,
+      eventId: f.event_id ?? null,
     },
   };
 }

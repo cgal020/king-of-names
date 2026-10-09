@@ -13,6 +13,8 @@ export type QueuedCapture = {
   recordedAt: string;
   timezone: string | null;
   location: { lat: number; lng: number; accuracyM: number | null } | null;
+  // An Event Mode take: the event it was recorded at.
+  eventId?: string;
   attempts: number;
   lastError: string | null;
   // Set when the server refused the note for good (too large, wrong format).

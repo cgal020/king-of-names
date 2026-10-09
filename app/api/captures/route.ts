@@ -59,7 +59,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The recording couldn't be stored." }, { status: 503 });
   }
 
-  const { error } = await supabase.from("captures").insert({
+  const row = {
     id: note.id,
     audio_path: path,
     audio_mime: note.mime,
@@ -69,8 +69,12 @@ export async function POST(request: Request) {
     lat: note.location?.lat ?? null,
     lng: note.location?.lng ?? null,
     location_accuracy_m: note.location?.accuracyM ?? null,
+    event_id: note.eventId,
     status: "uploaded",
-  });
+  };
+  let { error } = await supabase.from("captures").insert(row);
+  // An event started offline never reached the database: keep the take anyway.
+  if (error?.code === "23503" && note.eventId) ({ error } = await supabase.from("captures").insert({ ...row, event_id: null }));
   if (error) {
     // Two copies of the same note arriving together: the first one won.
     if (error.code === "23505") return Response.json({ id: note.id, status: "uploaded" }, { headers: noStore });

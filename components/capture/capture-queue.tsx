@@ -44,6 +44,7 @@ export async function uploadCapture(item: QueuedCapture) {
       form.set("lng", String(item.location.lng));
       if (item.location.accuracyM !== null) form.set("accuracy_m", String(item.location.accuracyM));
     }
+    if (item.eventId) form.set("event_id", item.eventId);
     response = await fetch("/api/captures", { method: "POST", body: form, signal });
   } else {
     response = await fetch("/manifest.webmanifest", { method: "HEAD", cache: "no-store", signal });

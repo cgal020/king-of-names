@@ -139,8 +139,14 @@ export async function loadNoteForReview(id: string, people: Person[]): Promise<R
     }
     row = (await getCapture(supabase, id)) ?? row;
   }
+  const draft = draftFromRow(row);
+  // A take from an event was met at that event, unless the note says where.
+  if (row.event_id && !draft.person.where_met_text) {
+    const { data: event } = await supabase.from("events").select("name").eq("id", row.event_id).maybeSingle();
+    if (event?.name) draft.person = { ...draft.person, where_met_text: event.name as string };
+  }
   return {
-    draft: draftFromRow(row),
+    draft,
     audioUrl: await audioUrl(supabase, row.audio_path),
     done: row.status === "confirmed" || row.status === "discarded",
   };

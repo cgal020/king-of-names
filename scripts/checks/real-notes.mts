@@ -184,21 +184,29 @@ try {
   await page.waitForTimeout(2000);
   await page.getByRole("button", { name: "Stop recording" }).click();
   await expect(page.getByText("Take 1 saved")).toBeVisible();
+  // The event is saved in the database, and the take is linked to it.
+  await expect.poll(async () => (await admin.from("events").select("name, ended_at").eq("user_id", userId)).data).toEqual([{ name: "Test night", ended_at: null }]);
   await page.getByRole("button", { name: "End", exact: true }).click();
   await page.waitForURL("**/capture/event", { waitUntil: "commit" });
+  await expect.poll(async () => (await admin.from("events").select("ended_at").eq("user_id", userId).single()).data?.ended_at ?? null).not.toBeNull();
   await expect(page.getByText(/^Ready to review/)).toBeVisible({ timeout: 60_000 });
   await expect(page.getByText(transcribes ? /./ : "Name not caught")).toBeVisible();
-  const { data: takes } = await admin.from("captures").select("id, status").eq("user_id", userId).is("person_id", null);
+  const { data: takes } = await admin.from("captures").select("id, status, event_id").eq("user_id", userId).is("person_id", null);
   expect(takes).toHaveLength(1);
+  const { data: event } = await admin.from("events").select("id").eq("user_id", userId).single();
+  expect(takes?.[0].event_id).toBe(event?.id);
   expect(takes?.[0].status).toBe(transcribes ? "extracted" : "failed");
   await page.getByRole("link", { name: "Review next" }).click();
   await page.waitForURL(/\/capture\/review\?capture=/, { waitUntil: "commit" });
   await expect(page.getByText(/Take 1 of 1/)).toBeVisible();
+  // Met at the event, unless the note said where.
+  await expect(page.locator("#where_met_text")).toHaveValue("Test night");
   await page.getByRole("button", { name: "Discard" }).click();
   await page.getByRole("button", { name: "Discard", exact: true }).last().click();
   await page.waitForURL("**/capture/event", { waitUntil: "commit" });
   await expect(page.getByText(/^Discarded/)).toBeVisible();
   pass("an Event Mode take is uploaded and read on the server, then reviewed from the takes list");
+  pass("the event is saved and ended in the database, its take is linked to it, and Review fills in where you met");
 
   await page.goto(BASE + `/people/${personId}`, { waitUntil: "networkidle" });
   await page.getByRole("button", { name: /^Delete Note/ }).click();

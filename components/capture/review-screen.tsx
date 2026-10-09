@@ -60,7 +60,12 @@ export function ReviewScreen({
     );
   }
 
-  const draft = note?.draft ?? take?.draft ?? (previewState ? reviewStateDraft(previewState) : mockDraft);
+  const found = note?.draft ?? take?.draft ?? (previewState ? reviewStateDraft(previewState) : mockDraft);
+  // A take from an event was met at that event, unless the note says where.
+  const draft =
+    take && event && !found.person.where_met_text
+      ? { ...found, person: { ...found.person, where_met_text: event.name } }
+      : found;
   const failed = draft.failedSteps ?? [];
   const url = note ? note.audioUrl : take ? takeAudio(take.captureId) : null;
   const durationSeconds = note ? draft.durationSeconds : (take?.durationSeconds ?? null);

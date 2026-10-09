@@ -1,13 +1,14 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { endEvent, startEvent } from "@/app/actions/events";
 import type { EventSession, Take, TakeOutcome } from "@/lib/events/event";
 import { authConfigured } from "@/lib/auth/config";
 import type { Draft } from "@/lib/types";
 
 // The current event and its takes. An event lasts hours and the app gets
-// closed in between, so it's kept in the browser. Mockup only: the real app
-// reads the open event and its takes from the database.
+// closed in between, so it's kept in the browser too. With accounts the
+// event is also saved in the database, and each take is linked to it there.
 const KEY = "king-of-names:event";
 // How long the mockup "pipeline" takes once a take reaches the server.
 export const MOCK_PROCESSING_MS = 2_500;
@@ -63,11 +64,16 @@ const updateTakes = (fn: (takes: Take[]) => Take[]) => {
 
 export const eventActions = {
   start(name: string) {
-    write({ id: crypto.randomUUID(), name, startedAt: new Date().toISOString(), endedAt: null, takes: [] });
+    const id = crypto.randomUUID();
+    write({ id, name, startedAt: new Date().toISOString(), endedAt: null, takes: [] });
+    if (authConfigured()) void startEvent(id, name).catch(() => null);
   },
   end() {
     const event = read();
-    if (event && !event.endedAt) write({ ...event, endedAt: new Date().toISOString() });
+    if (event && !event.endedAt) {
+      write({ ...event, endedAt: new Date().toISOString() });
+      if (authConfigured()) void endEvent(event.id).catch(() => null);
+    }
   },
   // Done with the event: every take is saved or discarded.
   close() {
