@@ -40,6 +40,17 @@ describe.runIf(configured)(`Ask with ${process.env.ASK_MODEL || process.env.EXTR
     expect(r.people).toEqual([]);
   });
 
+  it("puts the right person's card under each name it mentions", async () => {
+    // From Cameron's audit: the answer named one person, the card showed another.
+    const r = await run("I'm in Bangkok at the end of the month. Who should I catch up with?");
+    const ids = r.people.map((p) => p.id);
+    expect(ids.length).toBeGreaterThan(0);
+    // Everyone the answer names has their own card, and every card is someone it names.
+    const named = mockPeople.filter((p) => r.answer.includes(p.full_name.split(" ")[0])).map((p) => p.id);
+    for (const id of named) expect(ids).toContain(id);
+    for (const id of ids) expect(named).toContain(id);
+  });
+
   it("follows up on the previous question", async () => {
     const first = await run("Who do I know in Dubai?");
     const r = await run("Which of them are investors?", [{ question: "Who do I know in Dubai?", answer: first.answer }]);

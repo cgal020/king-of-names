@@ -2,17 +2,22 @@
 // or email addresses. Shared by the server's Ask and its tests.
 import type { Encounter, Person } from "@/lib/types";
 
-// One line per person, in a stable order so the list can be cached.
-export function peopleBlock(people: Person[], laterMeetings: Encounter[]) {
+// One line per person, in a stable order so the list can be cached. Each is
+// labelled P1, P2...: a model copies a short label reliably, where it can
+// mix up two 36-character ids. `byRef` turns the labels back into people.
+export function peopleBlock(people: Person[], laterMeetings: Encounter[]): { text: string; byRef: Map<string, Person> } {
   const later = new Map<string, Encounter[]>();
   for (const m of laterMeetings) later.set(m.person_id, [...(later.get(m.person_id) ?? []), m]);
   const clip = (text: string | null | undefined, max: number) =>
     text ? (text.length > max ? `${text.slice(0, max - 1)}…` : text).replace(/\s+/g, " ") : null;
+  const byRef = new Map<string, Person>();
   const lines = [...people]
     .sort((a, b) => a.id.localeCompare(b.id))
-    .map((p) => {
+    .map((p, i) => {
+      const ref = `P${i + 1}`;
+      byRef.set(ref, p);
       const fields = [
-        `id: ${p.id}`,
+        `ref: ${ref}`,
         `name: ${p.full_name}`,
         `first met: ${p.met_at.slice(0, 10)}${[p.place_name, p.city, p.country].filter(Boolean).length ? ` at ${[p.place_name, p.city, p.country].filter(Boolean).join(", ")}` : ""}`,
         p.where_met_text && `where, in their words: ${clip(p.where_met_text, 120)}`,
@@ -28,6 +33,6 @@ export function peopleBlock(people: Person[], laterMeetings: Encounter[]) {
       ].filter(Boolean);
       return fields.join(" | ");
     });
-  return `<people>\n${lines.join("\n")}\n</people>`;
+  return { text: `<people>\n${lines.join("\n")}\n</people>`, byRef };
 }
 
