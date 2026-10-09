@@ -31,7 +31,9 @@ const brandCss = `
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="font-sans antialiased">
+    // Browser extensions (screen recorders, password managers) add attributes to
+    // <html> before React loads; this ignores those on this one element only.
+    <html lang="en" className="font-sans antialiased" suppressHydrationWarning>
       <head>
         <style>{brandCss}</style>
       </head>
