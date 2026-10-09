@@ -6,7 +6,10 @@ import { buttonVariants } from "@/components/ui/button";
 import { mockPeople } from "@/lib/mock/people";
 import { cn } from "@/lib/utils";
 
-export default function PeoplePage() {
+// ?state=empty previews the screen before anyone is saved.
+export default async function PeoplePage({ searchParams }: PageProps<"/people">) {
+  const { state } = await searchParams;
+  const people = state === "empty" ? [] : mockPeople;
   return (
     <main className="mx-auto max-w-xl px-5 pb-8">
       <ScreenHeader
@@ -21,7 +24,7 @@ export default function PeoplePage() {
           </Link>
         }
       />
-      <PeopleList people={mockPeople} />
+      <PeopleList people={people} />
     </main>
   );
 }

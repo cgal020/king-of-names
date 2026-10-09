@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { checkRateLimit, rateLimitWindowStart } from "@/lib/captures/rate-limit";
+import { checkRateLimit, describeWait, rateLimitWindowStart } from "@/lib/captures/rate-limit";
 import { MAX_AUDIO_BYTES, validateCaptureUpload } from "@/lib/captures/validate";
 import { classifyUploadStatus, flushQueue, memoryStore, UploadRejected, type QueuedCapture } from "@/lib/offline/queue";
 
@@ -77,6 +77,13 @@ describe("checkRateLimit", () => {
       allowed: false,
       retryAfterSeconds: 600,
     });
+  });
+
+  it("says roughly how long a held note waits", () => {
+    expect(describeWait(20)).toBe("a few seconds");
+    expect(describeWait(70)).toBe("about a minute");
+    expect(describeWait(600)).toBe("about 10 minutes");
+    expect(describeWait(3590)).toBe("about an hour");
   });
 
   it("counts from one hour ago", () => {

@@ -189,6 +189,10 @@ async function serviceWorker(browser: Browser) {
   await expect(page.getByText("Who did you just meet?")).toBeVisible({ timeout: 10_000 });
   pass("offline: other pages show the offline screen, which leads back to Capture");
 
+  await page.goto(`${BASE}/capture/event`, { waitUntil: "load" });
+  await expect(page.getByText("No event right now")).toBeVisible({ timeout: 10_000 });
+  pass("offline: the event takes list opens from the worker too");
+
   await context.setOffline(false);
   await expect(page.getByText("Waiting note sent")).toBeVisible({ timeout: 40_000 });
   pass("back online with no online event: the 30 second retry sends the note");

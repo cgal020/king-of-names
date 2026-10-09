@@ -29,6 +29,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
 import { appConfig } from "@/lib/config";
 import { formatDistance, formatDuration } from "@/lib/format";
+import { describeWait } from "@/lib/captures/rate-limit";
 import { isLive, openTakes, type EventSession } from "@/lib/events/event";
 import { trackLocation, type LocationStatus } from "@/lib/geo/locate";
 import { mockTakeDraft } from "@/lib/mock/events";
@@ -41,6 +42,9 @@ import { cn } from "@/lib/utils";
 // is under 10 s.
 const STEPS = ["Saving the recording", "Transcribing", "Picking out the details", "Finding the place"];
 const STEP_MS = 650;
+
+const LIMIT_TITLE = "That’s 60 notes in the last hour";
+const limitDetail = (seconds: number) => `This one is saved on your phone and goes in ${describeWait(seconds)}.`;
 
 const secondaryAction =
   "flex h-11 items-center gap-2 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:text-foreground";
@@ -199,6 +203,7 @@ export function CaptureScreen() {
       setPhase("idle");
       setLocation({ state: "idle" });
       if (sent.refused) toast.error("This note couldn’t be sent", { description: sent.refused });
+      else if (sent.retryAfterSeconds) toast(LIMIT_TITLE, { description: limitDetail(sent.retryAfterSeconds) });
       else toast("Saved on your phone", { description: "No connection right now. It’ll be sent when you’re back online." });
     });
   }
@@ -222,6 +227,7 @@ export function CaptureScreen() {
     void queue.sendNew(item).then((sent) => {
       if (sent.ok) eventActions.markSent(item.id);
       else if (sent.refused) toast.error("This take couldn’t be sent", { description: sent.refused });
+      else if (sent.retryAfterSeconds) toast(LIMIT_TITLE, { description: limitDetail(sent.retryAfterSeconds) });
     });
   }
 

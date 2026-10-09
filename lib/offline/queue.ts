@@ -33,6 +33,15 @@ export class UploadRejected extends Error {
   name = "UploadRejected";
 }
 
+// Thrown when the server says the hourly limit is reached. The note waits
+// and is retried like any other failure.
+export class UploadRateLimited extends Error {
+  name = "UploadRateLimited";
+  constructor(public retryAfterSeconds: number) {
+    super("Hourly limit reached");
+  }
+}
+
 // How to treat the server's answer to an upload.
 export function classifyUploadStatus(status: number): "sent" | "retry" | "rejected" {
   if (status >= 200 && status < 300) return "sent";

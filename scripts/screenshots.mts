@@ -248,6 +248,69 @@ const SHOTS: Shot[] = [
     },
   },
   { name: "39-offline-page", path: "/offline" },
+  {
+    name: "40-event-start",
+    path: "/capture",
+    isolated: {},
+    act: async (p) => {
+      await p.getByRole("button", { name: "Event mode" }).click();
+      await p.getByLabel("Name this event").fill("Gallery night");
+    },
+  },
+  {
+    name: "41-event-live",
+    path: "/capture",
+    isolated: {},
+    act: async (p) => {
+      await p.getByRole("button", { name: "Event mode" }).click();
+      await p.getByLabel("Name this event").fill("Gallery night");
+      await p.getByRole("button", { name: "Start event mode" }).click();
+      for (let i = 0; i < 2; i++) {
+        await p.getByRole("button", { name: "Start recording" }).click();
+        await p.waitForTimeout(1200);
+        await p.getByRole("button", { name: "Stop recording" }).click();
+        await p.getByText(`Take ${i + 1} saved`).waitFor();
+      }
+      await p.waitForTimeout(400);
+    },
+  },
+  {
+    name: "42-event-takes",
+    path: "/capture",
+    isolated: {},
+    act: async (p) => {
+      await p.getByRole("button", { name: "Event mode" }).click();
+      await p.getByLabel("Name this event").fill("Gallery night");
+      await p.getByRole("button", { name: "Start event mode" }).click();
+      for (let i = 0; i < 3; i++) {
+        await p.getByRole("button", { name: "Start recording" }).click();
+        await p.waitForTimeout(1200);
+        await p.getByRole("button", { name: "Stop recording" }).click();
+        await p.getByText(`Take ${i + 1} saved`).waitFor();
+      }
+      await p.getByRole("button", { name: "End", exact: true }).click();
+      await p.waitForURL("**/capture/event");
+      await p.waitForTimeout(3500);
+    },
+  },
+  { name: "43-sign-in", path: "/login" },
+  {
+    name: "44-sign-up-errors-full",
+    path: "/signup?code=K7QM-4XRT-9PWD",
+    fullPage: true,
+    act: async (p) => {
+      await p.getByLabel("Your name").fill("Sarah Kim");
+      await p.getByLabel("Username").fill("sarah.k");
+      await p.getByLabel("Email").fill("sarah@example");
+      await p.getByRole("button", { name: "Create account" }).click();
+      await p.getByText("Enter a valid email address.").waitFor();
+    },
+  },
+  { name: "45-forgot-password", path: "/forgot-password" },
+  { name: "46-review-transcription-failed", path: "/capture/review?state=transcription-failed" },
+  { name: "47-review-extraction-failed-full", path: "/capture/review?state=extraction-failed", fullPage: true },
+  { name: "48-people-empty", path: "/people?state=empty" },
+  { name: "49-ask-empty", path: "/ask?state=empty" },
 ];
 
 const DARK = new Set([

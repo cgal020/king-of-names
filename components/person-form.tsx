@@ -39,6 +39,8 @@ type PersonFormProps = {
   audio?: { url: string; durationSeconds: number } | null;
   // Where to go after Save or Discard, and what to record, instead of the defaults.
   after?: { href: string; onDone: (outcome: "saved" | "discarded") => void };
+  // Opens the transcript, for when the details have to be typed from it.
+  transcriptOpen?: boolean;
 };
 
 type Section = "phone" | "birthday" | "followUp" | "work" | "email" | "web" | "address";
@@ -87,6 +89,7 @@ export function PersonForm({
   nameConfidence = "high",
   audio,
   after,
+  transcriptOpen = false,
 }: PersonFormProps) {
   const router = useRouter();
   const draftId = useId();
@@ -520,6 +523,7 @@ export function PersonForm({
               transcript={transcript ?? null}
               durationSeconds={recording ? recording.durationSeconds : (durationSeconds ?? null)}
               src={recording?.url}
+              defaultOpen={transcriptOpen}
             />
           </div>
         )}

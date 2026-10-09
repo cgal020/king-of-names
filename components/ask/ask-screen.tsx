@@ -1,11 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpIcon, MicIcon, SparklesIcon } from "lucide-react";
 import { AskAnswer } from "@/components/ask/ask-answer";
 import { useAskStore } from "@/components/ask/ask-store";
 import { ScreenHeader } from "@/components/screen-header";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { SUGGESTED_QUESTIONS } from "@/lib/ask/question";
 import type { Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -60,7 +61,21 @@ export function AskScreen({ people }: { people: Person[] }) {
         }
       />
 
-      {entries.length === 0 ? (
+      {people.length === 0 ? (
+        <section className="pt-6">
+          <h2 className="max-w-[20ch] text-[1.75rem] leading-tight font-semibold tracking-tight">
+            Nothing to ask about yet
+          </h2>
+          <p className="mt-2 max-w-[38ch] text-[0.95rem] text-muted-foreground">
+            Ask answers from the people you&rsquo;ve saved. Record a few notes first, then ask things like
+            &ldquo;Who did I meet in Dubai?&rdquo;
+          </p>
+          <Link href="/capture" className={cn(buttonVariants({ size: "touch-lg" }), "mt-6")}>
+            <MicIcon aria-hidden />
+            Record a note
+          </Link>
+        </section>
+      ) : entries.length === 0 ? (
         <section className="pt-6">
           <h2 className="max-w-[20ch] text-[1.75rem] leading-tight font-semibold tracking-tight">
             What do you want to know about your people?
@@ -92,41 +107,44 @@ export function AskScreen({ people }: { people: Person[] }) {
       )}
       <div ref={endRef} />
 
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          ask(text);
-        }}
-        className="fixed inset-x-0 bottom-(--tabbar-h) z-20 border-t bg-background/95 backdrop-blur-md"
-      >
-        <div className="mx-auto flex max-w-xl items-center gap-2 px-5 py-3">
-          <div className="relative min-w-0 flex-1">
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              enterKeyHint="send"
-              placeholder={listening ? "Listening…" : "Ask anything about your people"}
-              aria-label="Your question"
-              className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40"
-            />
-            <button
-              type="button"
-              onClick={() => setListening(true)}
-              aria-label="Ask with your voice"
-              aria-pressed={listening}
-              className={cn(
-                "absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
-                listening ? "animate-pulse text-primary" : "text-muted-foreground",
-              )}
-            >
-              <MicIcon className="size-5" />
-            </button>
+      {/* Nothing to ask about until someone is saved. */}
+      {people.length > 0 && (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            ask(text);
+          }}
+          className="fixed inset-x-0 bottom-(--tabbar-h) z-20 border-t bg-background/95 backdrop-blur-md"
+        >
+          <div className="mx-auto flex max-w-xl items-center gap-2 px-5 py-3">
+            <div className="relative min-w-0 flex-1">
+              <input
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                enterKeyHint="send"
+                placeholder={listening ? "Listening…" : "Ask anything about your people"}
+                aria-label="Your question"
+                className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40"
+              />
+              <button
+                type="button"
+                onClick={() => setListening(true)}
+                aria-label="Ask with your voice"
+                aria-pressed={listening}
+                className={cn(
+                  "absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 place-items-center rounded-lg",
+                  listening ? "animate-pulse text-primary" : "text-muted-foreground",
+                )}
+              >
+                <MicIcon className="size-5" />
+              </button>
+            </div>
+            <Button type="submit" size="icon-touch" aria-label="Ask" disabled={!text.trim()} className="size-12 rounded-xl">
+              <ArrowUpIcon />
+            </Button>
           </div>
-          <Button type="submit" size="icon-touch" aria-label="Ask" disabled={!text.trim()} className="size-12 rounded-xl">
-            <ArrowUpIcon />
-          </Button>
-        </div>
-      </form>
+        </form>
+      )}
     </main>
   );
 }

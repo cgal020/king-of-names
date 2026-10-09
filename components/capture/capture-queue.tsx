@@ -10,6 +10,7 @@ import {
   flushQueue,
   indexedDbStore,
   isSending,
+  UploadRateLimited,
   UploadRejected,
   type QueuedCapture,
 } from "@/lib/offline/queue";
@@ -37,6 +38,7 @@ export async function uploadCapture(item: QueuedCapture) {
     const body = await response.json().catch(() => null);
     throw new UploadRejected(body?.error ?? "The note couldn’t be sent.");
   }
+  if (response.status === 429) throw new UploadRateLimited(Number(response.headers.get("retry-after")) || 600);
   if (outcome === "retry") throw new Error(`Upload failed (${response.status})`);
   await new Promise((resolve) => setTimeout(resolve, 500));
 }
@@ -90,7 +92,9 @@ function useQueueEngine() {
   // Sends a new note: written to the phone first, removed once the server has
   // it, kept (and shown as waiting or refused) if it can't be sent.
   const sendNew = useCallback(
-    async (item: QueuedCapture): Promise<{ ok: true } | { ok: false; refused: string | null }> => {
+    async (
+      item: QueuedCapture,
+    ): Promise<{ ok: true } | { ok: false; refused: string | null; retryAfterSeconds: number | null }> => {
       const sendingUntil = new Date(Date.now() + UPLOAD_TIMEOUT_MS + 5_000).toISOString();
       await queueStore().put({ ...item, sendingUntil });
       try {
@@ -106,7 +110,7 @@ function useQueueEngine() {
           ...(refused && { rejected: refused }),
         });
         await refresh();
-        return { ok: false, refused };
+        return { ok: false, refused, retryAfterSeconds: error instanceof UploadRateLimited ? error.retryAfterSeconds : null };
       }
     },
     [refresh],

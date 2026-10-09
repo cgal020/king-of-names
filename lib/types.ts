@@ -43,6 +43,8 @@ export type Draft = {
   durationSeconds: number | null;
   nameConfidence: Confidence;
   additionalPeople: string[];
+  // Pipeline steps that failed, so review can say what to fill in by hand.
+  failedSteps?: ("transcription" | "extraction" | "geocoding")[];
 };
 
 export type PhotoKind = "person" | "card" | "moment";

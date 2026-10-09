@@ -94,6 +94,15 @@ The grey strip at the top of every screenshot ("Preview with sample data. Nothin
 | 34 | Install steps (iPhone) | `37-install-steps-iphone`, `-dark` | "How" opens an instruction sheet: Share (or ⋯ first in newer Safari), Add to Home Screen, keep "Open as Web App" on. Android shows Chrome's install prompt when it's offered, otherwise the menu steps. |
 | 35 | Waiting to send | `38-capture-waiting-to-send` | A note recorded with no signal (or when the upload fails) stays on the phone: toast "Saved on your phone" and a dashed "1 note waiting to send" strip with Send now. Sends by itself once back online. |
 | 36 | Offline page | `39-offline-page` | Any page other than Capture opened without a connection: "You're offline", you can still record, "Record a note". |
+| 37 | Event mode, start | `40-event-start` | "Event mode" under the record button opens a sheet: what it does, a name for the event (defaults to e.g. "Friday evening"), Start. |
+| 38 | Event mode, running | `41-event-live` | A green banner (event name, takes saved, End). Heading "Who's next?". Each tap saves a take straight away ("Take 2 saved"), no processing screen. |
+| 39 | Event takes | `42-event-takes` | After End: every take with the name and one detail the AI picked out, its status (waiting to send, picking out the details, ready, saved, discarded), Review next and Review later. |
+| 40 | Sign in | `43-sign-in` | Also the signed-out landing: app mark, "Remember everyone you meet.", username or email, password (show/hide), forgot password, create an account. |
+| 41 | Sign up | `44-sign-up-errors-full` | Invite code (prefilled from an invite link), name, username, email, password; errors under each field, everything typed kept. |
+| 42 | Forgot password | `45-forgot-password` | Username or email, then the same answer whether or not the account exists. |
+| 43 | Review, recording not transcribed | `46-review-transcription-failed` | Amber notice with Try again; the recording plays below; Save waits for a name. |
+| 44 | Review, details not picked out | `47-review-extraction-failed-full` | Notice, and the transcript opens so the details can be typed from it. (`?state=place-failed` shows the "set the city" notice.) |
+| 45 | Empty People and Ask | `48-people-empty`, `49-ask-empty` | Before anyone is saved, both point to recording a first note. |
 
 Photos also appear on the Capture screen (Card and Photo buttons beside the record button, `01-capture`), on Review and Profile as a photo strip with an "Add photo" tile that asks Them / Card / Place, and as profile pictures (initials when none) in the People list, profile header, map pins and the map person card.
 
@@ -112,15 +121,14 @@ Photos also appear on the Capture screen (Card and Photo buttons beside the reco
 
 ## 6. States not designed yet
 
-Please design these; they are in scope for the MVP.
+Sign-in, failure, empty, loading and rate-limit states are now built in a plain first version (screens 37 to 45). Please design over them. Still to design:
 
-- **Sign in** (username or email + password), **sign up** (invite code, email, username, password), **password reset**, and a signed-out landing.
-- **Permissions**: microphone denied, location denied (capture still works; city set on review), camera denied.
-- **Pipeline failures**: transcription failed (keep the audio, offer retry, allow manual entry); extraction failed (show the transcript so the user can fill in by hand).
-- **Empty states**: no people yet, no results, no one near you, city with no pins.
-- **Rate limit** reached (60 captures per hour).
-- **Loading skeletons** for People, Profile and Map panel.
+- **Permissions**: microphone denied is only a toast today; location denied shows "Location is off. You can set the city next." on Capture; camera denied falls back to choosing a photo.
+- **Rate limit**: today a toast ("That's 60 notes in the last hour. This one is saved on your phone and goes in about 12 minutes.") and the waiting strip.
+- **Loading skeletons** exist for People, Profile and the Map (`app/(app)/*/loading.tsx`) but only flash with sample data.
 - **Toasts**: saved, updated, deleted, discarded, copied.
+
+Add `?state=empty` to People or Ask, or `?state=transcription-failed`, `extraction-failed` or `place-failed` to Review, to see those states in the preview.
 
 ## 7. New features: built in the mockup, please refine
 

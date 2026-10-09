@@ -1,6 +1,8 @@
 import { ReviewScreen } from "@/components/capture/review-screen";
+import { REVIEW_STATES, type ReviewState } from "@/lib/mock/review-states";
 
 export default async function ReviewPage({ searchParams }: PageProps<"/capture/review">) {
-  const { capture } = await searchParams;
-  return <ReviewScreen captureId={typeof capture === "string" ? capture : null} />;
+  const { capture, state } = await searchParams;
+  const previewState = REVIEW_STATES.find((s) => s === state) as ReviewState | undefined;
+  return <ReviewScreen captureId={typeof capture === "string" ? capture : null} previewState={previewState ?? null} />;
 }

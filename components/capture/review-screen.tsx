@@ -1,18 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { useSyncExternalStore } from "react";
+import { useRouter } from "next/navigation";
+import { useState, useSyncExternalStore } from "react";
+import { toast } from "sonner";
+import { AudioLinesIcon, MapPinOffIcon, TextSearchIcon } from "lucide-react";
 import { eventActions, takeAudio, useEventSession } from "@/components/capture/event-store";
 import { PersonForm } from "@/components/person-form";
 import { ScreenHeader } from "@/components/screen-header";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { formatDuration, formatMetDateTime } from "@/lib/format";
 import { mockDraft } from "@/lib/mock/people";
+import { reviewStateDraft, type ReviewState } from "@/lib/mock/review-states";
+import type { Draft } from "@/lib/types";
 
 const noSubscribe = () => () => {};
 
 // Review for the note just recorded, or for one take from an event.
-export function ReviewScreen({ captureId }: { captureId: string | null }) {
+export function ReviewScreen({ captureId, previewState }: { captureId: string | null; previewState: ReviewState | null }) {
   const event = useEventSession();
   // Takes live in the browser, so wait for it before deciding a take is gone.
   const hydrated = useSyncExternalStore(noSubscribe, () => true, () => false);
@@ -33,7 +38,8 @@ export function ReviewScreen({ captureId }: { captureId: string | null }) {
     );
   }
 
-  const draft = take?.draft ?? mockDraft;
+  const draft = take?.draft ?? (previewState ? reviewStateDraft(previewState) : mockDraft);
+  const failed = draft.failedSteps ?? [];
   const url = take ? takeAudio(take.captureId) : null;
 
   return (
@@ -52,14 +58,16 @@ export function ReviewScreen({ captureId }: { captureId: string | null }) {
         Recorded {formatMetDateTime(draft.person.met_at, draft.person.met_timezone)}
         {draft.durationSeconds !== null && <> &middot; {formatDuration(draft.durationSeconds)}</>}
       </p>
+      {failed.length > 0 && <PipelineNotice draft={draft} />}
       <PersonForm
-        key={draft.captureId}
+        key={draft.captureId + failed.join()}
         mode="review"
         initial={draft.person}
         captureId={draft.captureId}
         transcript={draft.transcript}
         durationSeconds={draft.durationSeconds}
         nameConfidence={draft.nameConfidence}
+        transcriptOpen={failed.includes("extraction")}
         audio={take ? (url ? { url, durationSeconds: take.durationSeconds } : null) : undefined}
         after={
           take
@@ -68,5 +76,59 @@ export function ReviewScreen({ captureId }: { captureId: string | null }) {
         }
       />
     </main>
+  );
+}
+
+// What went wrong in processing and what to do about it. The recording is
+// always kept, so nothing said is lost.
+function PipelineNotice({ draft }: { draft: Draft }) {
+  const router = useRouter();
+  const [retrying, setRetrying] = useState(false);
+  const failed = draft.failedSteps ?? [];
+
+  // Mockup: a second try that works. Real build: POST /api/captures/[id]/retry.
+  function retry() {
+    setRetrying(true);
+    window.setTimeout(() => {
+      toast.success("Transcribed this time");
+      router.replace("/capture/review");
+    }, 1200);
+  }
+
+  if (failed.includes("transcription")) {
+    return (
+      <Notice icon={<AudioLinesIcon className="size-5" aria-hidden />} title="We couldn’t turn this recording into text">
+        <p>
+          Your recording is safe. Try again in a moment, or play it below and type in what you need.
+        </p>
+        <Button size="touch" className="mt-3 self-start" disabled={retrying} onClick={retry}>
+          {retrying ? "Trying again…" : "Try again"}
+        </Button>
+      </Notice>
+    );
+  }
+  if (failed.includes("extraction")) {
+    return (
+      <Notice icon={<TextSearchIcon className="size-5" aria-hidden />} title="We couldn’t pick out the details">
+        <p>The transcript is open below. Fill in the name and anything else you want to keep.</p>
+      </Notice>
+    );
+  }
+  return (
+    <Notice icon={<MapPinOffIcon className="size-5" aria-hidden />} title="We couldn’t find the place name">
+      <p>Where you were is saved. Set the city below so you can find this person on the map.</p>
+    </Notice>
+  );
+}
+
+function Notice({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+  return (
+    <div role="status" className="mb-6 flex gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-[0.95rem]">
+      <span className="mt-0.5 text-amber-700 dark:text-amber-400">{icon}</span>
+      <div className="flex min-w-0 flex-col">
+        <p className="font-medium">{title}</p>
+        <div className="text-muted-foreground">{children}</div>
+      </div>
+    </div>
   );
 }

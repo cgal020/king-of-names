@@ -22,6 +22,15 @@ export function checkRateLimit({
   return { allowed: false, retryAfterSeconds };
 }
 
+// "about 12 minutes", for telling someone when a held note will go.
+export function describeWait(seconds: number) {
+  if (seconds < 45) return "a few seconds";
+  const minutes = Math.round(seconds / 60);
+  if (minutes <= 1) return "about a minute";
+  if (minutes < 60) return `about ${minutes} minutes`;
+  return "about an hour";
+}
+
 // The start of the window, for the query: captures created after this count.
 export function rateLimitWindowStart(now = Date.now()) {
   return new Date(now - WINDOW_MS).toISOString();
