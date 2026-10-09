@@ -175,6 +175,17 @@ export function SignUpForm({ invite }: { invite: string | null }) {
         error={e?.password}
         required
       />
+      <label className="flex items-start gap-3 rounded-2xl bg-muted p-4">
+        <input type="checkbox" name="ai" className="mt-0.5 size-5 shrink-0 accent-primary" />
+        <span>
+          <span className="block text-[0.95rem] font-medium">Let the AI fill in profiles from my notes and cards</span>
+          <span className="mt-1 block text-sm text-muted-foreground">
+            Recordings go to OpenAI to be turned into text; notes, card photos and Ask questions go to Anthropic; places
+            go to Mapbox. They don&rsquo;t train on it. Leave this off to be asked the first time instead; you can change
+            it in Settings.
+          </span>
+        </span>
+      </label>
       <Button type="submit" size="touch-lg" disabled={pending}>
         {pending ? "Creating your account…" : "Create account"}
       </Button>

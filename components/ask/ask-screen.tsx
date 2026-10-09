@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpIcon, MicIcon, SparklesIcon } from "lucide-react";
 import { AskAnswer } from "@/components/ask/ask-answer";
+import { AiConsentSheet, useAiConsent } from "@/components/capture/ai-consent";
 import { useAskStore } from "@/components/ask/ask-store";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -16,8 +17,11 @@ type Entry = { id: number; question: string; answer?: string };
 
 export function AskScreen({ people }: { people: Person[] }) {
   const { pending, setPending } = useAskStore();
-  // A question handed over from People search starts the thread.
-  const [entries, setEntries] = useState<Entry[]>(() => (pending ? [{ id: 1, question: pending }] : []));
+  const { consented } = useAiConsent();
+  // A question handed over from People search starts the thread, once the
+  // user has agreed to send questions to the AI.
+  const [entries, setEntries] = useState<Entry[]>(() => (pending && consented ? [{ id: 1, question: pending }] : []));
+  const [awaitingConsent, setAwaitingConsent] = useState<string | null>(() => (pending && !consented ? pending : null));
   const [text, setText] = useState("");
   const [listening, setListening] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -33,11 +37,15 @@ export function AskScreen({ people }: { people: Person[] }) {
   }, [entries.length]);
 
   // Mockup voice question: "hears" a sample question after a moment.
+  const askRef = useRef<(question: string) => void>(() => {});
+  useEffect(() => {
+    askRef.current = ask;
+  });
   useEffect(() => {
     if (!listening) return;
     const id = window.setTimeout(() => {
       setListening(false);
-      ask("Who did I meet in Dubai who works in shipping?");
+      askRef.current("Who did I meet in Dubai who works in shipping?");
     }, 1600);
     return () => window.clearTimeout(id);
   }, [listening]);
@@ -45,12 +53,24 @@ export function AskScreen({ people }: { people: Person[] }) {
   function ask(question: string) {
     const q = question.trim();
     if (!q) return;
+    if (!consented) return setAwaitingConsent(q);
     setEntries((list) => [...list, { id: nextId.current++, question: q }]);
     setText("");
   }
 
   return (
     <main className="mx-auto max-w-xl px-5 pb-28">
+      {awaitingConsent !== null && (
+        <AiConsentSheet
+          purpose="ask"
+          onCancel={() => setAwaitingConsent(null)}
+          onAgree={() => {
+            setEntries((list) => [...list, { id: nextId.current++, question: awaitingConsent }]);
+            setText("");
+            setAwaitingConsent(null);
+          }}
+        />
+      )}
       <ScreenHeader
         title="Ask"
         actions={

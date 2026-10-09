@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CameraIcon, ImagesIcon, QrCodeIcon, ScanTextIcon, XIcon } from "lucide-react";
+import { AiConsentSheet, useAiConsent } from "@/components/capture/ai-consent";
 import { useCardResult, type CardResult, type CardSource } from "@/components/capture/card-store";
 import { usePhotos } from "@/components/photos/photo-store";
 import { Button } from "@/components/ui/button";
@@ -93,6 +94,8 @@ export function CardScanner() {
   const [draftId] = useState(() => (authConfigured() ? crypto.randomUUID() : mockDraft.captureId));
   const { add } = usePhotos();
   const { setResult } = useCardResult();
+  // Cards are read by the AI, so the camera waits for consent.
+  const { consented } = useAiConsent();
   const supported = useCameraSupported();
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -146,7 +149,7 @@ export function CardScanner() {
 
   // Start the rear camera.
   useEffect(() => {
-    if (!supported) return;
+    if (!supported || !consented) return;
     let stream: MediaStream | null = null;
     let cancelled = false;
     navigator.mediaDevices
@@ -165,7 +168,7 @@ export function CardScanner() {
       cancelled = true;
       stream?.getTracks().forEach((t) => t.stop());
     };
-  }, [supported]);
+  }, [supported, consented]);
 
   // Look for a QR code a few times a second while the camera is live. When
   // one is found, that frame is the card's photo too.
@@ -284,6 +287,7 @@ export function CardScanner() {
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col bg-black text-white">
+      {!consented && <AiConsentSheet purpose="card" onCancel={() => router.push("/capture")} onAgree={() => {}} />}
       <input
         ref={fileRef}
         type="file"

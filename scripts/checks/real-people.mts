@@ -110,8 +110,15 @@ try {
   await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
   await page.getByLabel("Your question").fill("Who breeds flamingos?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
+  // The first question asks before sending anything to the AI.
+  await expect(page.getByRole("dialog", { name: "Before your first question" })).toBeVisible();
+  await page.getByRole("button", { name: "I agree" }).click();
   await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible({ timeout: 30_000 });
   pass("Ask AI answers from their saved people and links the person it used");
+  await expect
+    .poll(async () => ((await admin.auth.admin.getUserById(userId)).data.user?.user_metadata as { ai_consent_at?: string }).ai_consent_at ?? null)
+    .not.toBeNull();
+  pass("agreeing to the AI is kept on the account, so other phones don't ask again");
 
   const pins = await (await page.request.get(BASE + "/api/map")).json();
   expect(pins.features).toHaveLength(1); // before the card test adds a second person
@@ -119,6 +126,7 @@ try {
   pass("the map gets one pin for them, without their notes");
 
   await page.goto(BASE + "/capture/card", { waitUntil: "networkidle" });
+  await expect(page.getByRole("dialog", { name: /^Before your first/ })).toHaveCount(0);
   const [cardChooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Library" }).click()]);
   await cardChooser.setFiles({ name: "card.png", mimeType: "image/png", buffer: cardPng });
   await expect(page.getByText("Read from the card")).toBeVisible({ timeout: 30_000 });
@@ -178,6 +186,18 @@ try {
   expect((await outsider.request.post(BASE + "/api/cards/link", { data: { url: "https://blinq.me/x" } })).status()).toBe(401);
   await outsider.close();
   pass("the link reader refuses other sites, this machine and signed-out callers");
+
+  await page.goto(BASE + "/settings", { waitUntil: "networkidle" });
+  const aiSwitch = page.getByRole("switch", { name: "Use AI to fill in profiles" });
+  await expect(aiSwitch).toHaveAttribute("aria-checked", "true");
+  await aiSwitch.click();
+  await expect(aiSwitch).toHaveAttribute("aria-checked", "false");
+  await expect
+    .poll(async () => ((await admin.auth.admin.getUserById(userId)).data.user?.user_metadata as { ai_consent_at?: string | null }).ai_consent_at ?? null)
+    .toBeNull();
+  await page.goto(BASE + "/capture/card", { waitUntil: "networkidle" });
+  await expect(page.getByRole("dialog", { name: "Before your first card" })).toBeVisible();
+  pass("turning the AI off in Settings is kept, and the next card asks first");
 
   await page.goto(BASE + "/settings", { waitUntil: "networkidle" });
   await expect(page.getByText(username)).toBeVisible();

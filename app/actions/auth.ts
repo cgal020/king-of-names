@@ -93,7 +93,8 @@ export async function signUp(_: FormState, formData: FormData): Promise<FormStat
     email,
     password,
     email_confirm: true,
-    user_metadata: { username, display_name: name },
+    // Agreeing on sign-up means the first note isn't interrupted to ask.
+    user_metadata: { username, display_name: name, ...(formData.get("ai") === "on" ? { ai_consent_at: new Date().toISOString() } : {}) },
   });
   if (error || !created.user) {
     await admin.from("invite_codes").update({ used_at: null }).eq("code", invite).eq("used_at", claimedAt);

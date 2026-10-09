@@ -27,7 +27,8 @@ const { data: created, error: createError } = await admin.auth.admin.createUser(
   email: `smoke-${suffix}@example.com`,
   password,
   email_confirm: true,
-  user_metadata: { username, display_name: "Note Test" },
+  // Agreed at sign-up, as the sign-up form allows, so recording isn't interrupted.
+  user_metadata: { username, display_name: "Note Test", ai_consent_at: new Date().toISOString() },
 });
 if (createError || !created.user) throw new Error(`Could not create the test account: ${createError?.message}`);
 const userId = created.user.id;
@@ -59,7 +60,6 @@ try {
     permissions: ["microphone", "geolocation"],
   });
   await context.addInitScript(() => {
-    localStorage.setItem("king-of-names:ai-consent", "yes");
     localStorage.setItem("king-of-names:install-coach-dismissed", "yes");
   });
   const page = await context.newPage();

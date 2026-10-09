@@ -17,7 +17,7 @@ import {
   SettingsIcon,
   XIcon,
 } from "lucide-react";
-import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
+import { AiConsentSheet, useAiConsent } from "@/components/capture/ai-consent";
 import { CouldNotSend, processCapture, processCaptureLive, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
 import { EventBanner, StartEventSheet } from "@/components/capture/event-mode";
 import { currentEvent, eventActions, useEventSession } from "@/components/capture/event-store";
@@ -77,6 +77,7 @@ export function CaptureScreen() {
   const router = useRouter();
   const [phase, setPhase] = useState<Phase>("idle");
   const [askingConsent, setAskingConsent] = useState(false);
+  const { consented } = useAiConsent();
   const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(0);
   const [location, setLocation] = useState<LocationState>({ state: "idle" });
@@ -310,7 +311,7 @@ export function CaptureScreen() {
   function handlePress() {
     if (phase === "idle") {
       // The first recording asks for consent to send notes to the AI providers.
-      if (hasAiConsent()) void startRecording();
+      if (consented) void startRecording();
       else setAskingConsent(true);
     } else if (phase === "recording") {
       void stopRecording();

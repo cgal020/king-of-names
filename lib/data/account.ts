@@ -36,6 +36,17 @@ export async function getAccount(): Promise<Account> {
   };
 }
 
+// Whether this account agreed to send notes, cards and questions to the AI
+// providers (see app/actions/consent.ts). Null in the preview, where each
+// phone keeps its own answer.
+export async function getAiConsent(): Promise<boolean | null> {
+  if (!authConfigured()) return null;
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const metadata = data?.claims?.user_metadata as { ai_consent_at?: string | null } | undefined;
+  return Boolean(metadata?.ai_consent_at);
+}
+
 export async function listInvites(): Promise<Invite[]> {
   if (!authConfigured()) return SAMPLE_INVITES;
   const userId = await currentUserId();

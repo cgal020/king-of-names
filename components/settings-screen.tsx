@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronDownIcon, CopyIcon } from "lucide-react";
 import { AccountActions } from "@/components/settings/account-actions";
+import { AiConsentSetting } from "@/components/settings/ai-consent-setting";
 import { AiConnectors } from "@/components/settings/ai-connectors";
 import { ExportButtons } from "@/components/settings/export-buttons";
 import { ImportContacts } from "@/components/settings/import-contacts";
@@ -200,6 +201,7 @@ export function SettingsScreen({
 
       <Section title="Privacy">
         <div className="max-w-[65ch] space-y-3 text-[0.95rem] leading-relaxed text-muted-foreground">
+          <AiConsentSetting />
           <p>
             {appConfig.name} stores the people you add, your voice notes, their transcripts, and where and
             when each note was recorded. It is kept in a private database in Mumbai, India, that only your account
@@ -213,11 +215,18 @@ export function SettingsScreen({
             Photos are stored the same way. Photos of business cards are sent to Anthropic to read the details off
             the card; other photos, including photos of people, are never sent to an AI. If a card&rsquo;s QR code
             links to the person&rsquo;s own digital card (Blinq, Popl and similar), the app opens that page and
-            Anthropic reads the details from it; other links are kept, not opened. When you use Ask AI, your
-            question and the notes needed to answer it are sent to Anthropic. Nothing else about you is sent to
-            these providers.
+            Anthropic reads the details from it; other links are kept, not opened.
           </p>
-          <p>You can export everything or delete your account at any time.</p>
+          <p>
+            When you use Ask AI, your question is sent to Anthropic with a summary of all your people to answer
+            from: their names, where and when you met, work, tags, notes, follow-ups, birthdays and later meetings.
+            Their phone numbers and email addresses are never included. Nothing else about you is sent to these
+            providers.
+          </p>
+          <p>
+            You can download your people as a spreadsheet or JSON file, and delete your account with everything in
+            it, at any time.
+          </p>
           <ul className="list-disc space-y-1 pl-5 text-foreground marker:text-primary">
             <li>Your notes are never used to train AI.</li>
             <li>No enrichment: we never look people up on LinkedIn, the web or data brokers. When a card’s QR code links to their own digital card, only that page is read.</li>
