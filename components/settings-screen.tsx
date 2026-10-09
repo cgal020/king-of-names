@@ -169,7 +169,6 @@ export function SettingsScreen({
             </li>
           ))}
         </ul>
-        <p className="mt-3 text-sm text-muted-foreground">Renaming and merging tags comes with the full build.</p>
       </Section>
 
       <Section title="Install on your phone">

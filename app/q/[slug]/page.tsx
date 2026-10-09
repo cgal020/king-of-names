@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: PageProps<"/q/[slug]">): Prom
   const code = await findQrBySlug((await params).slug);
   const name = code?.destination.purpose === "contact" ? code.destination.full_name : null;
   // Not indexed: these pages are for the person who scanned the code.
-  return { title: name ?? "Contact", robots: { index: false, follow: false } };
+  return { title: name ?? (code ? "Contact" : "Code not found"), robots: { index: false, follow: false } };
 }
 
 export default async function QrLanding({ params }: PageProps<"/q/[slug]">) {

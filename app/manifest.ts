@@ -18,8 +18,7 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
       { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
-    // Long-press shortcuts on Android; iOS ignores them (see Settings for an
-    // Apple Shortcut instead).
+    // Long-press shortcuts on Android; iOS ignores them.
     shortcuts: [
       { name: "Record a note", short_name: "Record", url: "/capture?record=1", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
       { name: "Scan a card", short_name: "Scan card", url: "/capture/card", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },

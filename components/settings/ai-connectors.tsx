@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { ChevronDownIcon, CopyIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { authConfigured } from "@/lib/auth/config";
 import { appConfig } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,17 @@ export function AiConnectors() {
     } catch {
       toast("Copy didn't work", { description: url });
     }
+  }
+
+  // With accounts, the connector waits for its secure sign-in (OAuth); until
+  // then a switch here would do nothing.
+  if (authConfigured()) {
+    return (
+      <p className="rounded-2xl bg-muted p-4 text-[0.95rem] text-muted-foreground">
+        Coming soon: ask Claude or ChatGPT things like &ldquo;who do I know in Bangkok who could help with hotels?&rdquo;
+        It will be read only and off until you turn it on.
+      </p>
+    );
   }
 
   return (

@@ -1,5 +1,5 @@
-// Name similarity for the duplicate check. The real check runs in Postgres
-// with pg_trgm; this mirrors it closely enough for the mockup.
+// Name similarity for the "Already met?" duplicate check. It runs on the phone
+// over the user's own people, which are already loaded for the form.
 function normalize(name: string) {
   return name
     .normalize("NFKD")

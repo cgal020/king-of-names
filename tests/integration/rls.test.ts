@@ -42,6 +42,8 @@ describe("row level security between two accounts", () => {
   let photoId: string;
   let photoPath: string;
   let eventId: string;
+  let qrId: string;
+  const qrSlug = `rls${randomUUID().replace(/-/g, "").slice(0, 5)}`;
 
   beforeAll(async () => {
     [a, b] = await Promise.all([createTestUser("a"), createTestUser("b")]);
@@ -101,6 +103,14 @@ describe("row level security between two accounts", () => {
       .single();
     if (eventError) throw eventError;
     eventId = event.id;
+
+    const { data: qr, error: qrError } = await a.client
+      .from("qr_codes")
+      .insert({ slug: qrSlug, label: "WhatsApp me", destination: { purpose: "whatsapp", phone: "971555550142" } })
+      .select("id")
+      .single();
+    if (qrError) throw qrError;
+    qrId = qr.id;
   });
 
   afterAll(async () => {
@@ -225,6 +235,31 @@ describe("row level security between two accounts", () => {
     expect(take.error).not.toBeNull();
   });
 
+  it("hides another user's QR codes and blocks repointing them", async () => {
+    const seen = await b.client.from("qr_codes").select("*").eq("id", qrId);
+    expect(seen.data).toEqual([]);
+    const repointed = await b.client
+      .from("qr_codes")
+      .update({ destination: { purpose: "link", url: "https://evil.example/" } })
+      .eq("id", qrId)
+      .select();
+    expect(repointed.data ?? []).toEqual([]);
+    const deleted = await b.client.from("qr_codes").delete().eq("id", qrId).select();
+    expect(deleted.data ?? []).toEqual([]);
+    // Taking over the slug as your own code is refused too.
+    const taken = await b.client.from("qr_codes").insert({ slug: qrSlug, label: "Mine", destination: { purpose: "link", url: "https://evil.example/" } });
+    expect(taken.error).not.toBeNull();
+    const own = await a.client.from("qr_codes").select("destination").eq("id", qrId).single();
+    expect(own.data?.destination).toEqual({ purpose: "whatsapp", phone: "971555550142" });
+  });
+
+  it("lets only the server count scans", async () => {
+    const counted = await b.client.rpc("count_qr_scan", { scanned_slug: qrSlug });
+    expect(counted.error?.code).toBe("42501");
+    const anon = createClient(env.url, env.anonKey, clientOptions);
+    expect((await anon.rpc("count_qr_scan", { scanned_slug: qrSlug })).error?.code).toBe("42501");
+  });
+
   it("gives clients no access to invite codes", async () => {
     const { error } = await a.client.from("invite_codes").select("*");
     expect(error?.code).toBe("42501");
@@ -234,7 +269,9 @@ describe("row level security between two accounts", () => {
     const anon = createClient(env.url, env.anonKey, clientOptions);
     const people = await anon.from("people").select("*");
     const captures = await anon.from("captures").select("*");
+    const codes = await anon.from("qr_codes").select("*");
     expect(people.data ?? []).toEqual([]);
     expect(captures.data ?? []).toEqual([]);
+    expect(codes.data ?? []).toEqual([]);
   });
 });

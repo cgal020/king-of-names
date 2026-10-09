@@ -42,7 +42,7 @@ A variable already set in your shell wins over `.env.local`. Some tools (the Cla
 | `TRANSCRIPTION_MODEL` | server only | OpenAI transcription model ID; `gpt-transcribe` recommended |
 | `TRANSCRIPTION_LANGUAGES` | server only | Comma-separated languages notes are spoken in, default `en` |
 | `ANTHROPIC_API_KEY` | server only | Field extraction |
-| `EXTRACTION_MODEL` | server only | Anthropic model ID for extraction and card reading; `claude-haiku-4-5` recommended |
+| `EXTRACTION_MODEL` | server only | Anthropic model ID for extraction, card and page reading and Ask; `claude-haiku-5-5` recommended |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | browser | Public token for drawing maps. Restrict it to the production and preview URLs in the Mapbox dashboard. Without it the Map shows a drawn stand-in |
 | `NEXT_PUBLIC_MAPBOX_STYLE` | browser | Optional Mapbox Studio style URL instead of Mapbox Standard; `blank` draws no tiles, for tests |
 | `MAPBOX_SERVER_TOKEN` | server only | Reverse geocoding: the stored place (permanent geocoding, needs a card on the Mapbox account) and the place shown while recording (temporary, free tier) |

@@ -119,7 +119,9 @@ export function MapScreen({
       const d = new Date(Date.now() + offset * 86_400_000);
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     };
-    const city = (cities.find((c) => c.city !== mockCurrentLocation.city) ?? cities[0])?.city;
+    // The preview "is" in Dubai, so its sample trip goes elsewhere; otherwise
+    // start with the city where you know the most people.
+    const city = (cities.find((c) => !sample || c.city !== mockCurrentLocation.city) ?? cities[0])?.city;
     if (!city) {
       toast("No cities yet", { description: "Save someone with a city first, then plan a trip there." });
       return;

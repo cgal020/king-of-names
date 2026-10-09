@@ -443,8 +443,8 @@ function SideAction({
 }
 
 function DraftPhotos({ photos }: { photos: Photo[] }) {
-  return (
-    <Link href="/capture/review" className="mt-5 flex items-center gap-3">
+  const content = (
+    <>
       <span className="flex -space-x-2">
         {photos.slice(0, 4).map((p) => (
           // eslint-disable-next-line @next/next/no-img-element -- object URLs
@@ -454,6 +454,15 @@ function DraftPhotos({ photos }: { photos: Photo[] }) {
       <span className="text-sm text-muted-foreground">
         {photos.length === 1 ? "1 photo" : `${photos.length} photos`} added to this note
       </span>
+    </>
+  );
+  // The preview opens its sample note; otherwise there's no note to open
+  // until you record one, and the photos go with it.
+  return authConfigured() ? (
+    <div className="mt-5 flex items-center gap-3">{content}</div>
+  ) : (
+    <Link href="/capture/review" className="mt-5 flex items-center gap-3">
+      {content}
     </Link>
   );
 }

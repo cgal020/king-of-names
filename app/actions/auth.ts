@@ -181,6 +181,9 @@ export async function deleteAccount(): Promise<{ result: "deleted" | "preview" }
       if (removeError) return { error: "Couldn’t delete everything. Your account is still here; try again." };
     }
   }
+  // Their unused invite codes go too, so nobody joins on a deleted account's invite.
+  const { error: inviteError } = await admin.from("invite_codes").delete().eq("created_by", userId).is("used_by", null);
+  if (inviteError) return { error: "Couldn’t delete everything. Your account is still here; try again." };
   const { error } = await admin.auth.admin.deleteUser(userId);
   if (error) return { error: "Couldn’t delete your account. Try again." };
   await supabase.auth.signOut();
