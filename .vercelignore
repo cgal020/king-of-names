@@ -1,0 +1,11 @@
+# Never uploaded on a CLI deploy: local secrets, local tools and caches.
+# Vercel builds with the project's own environment variables.
+.env*
+!.env.example
+.claude
+.vercel
+.next
+node_modules
+coverage
+*.tsbuildinfo
+docs/design-handoff.zip

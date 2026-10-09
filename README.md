@@ -174,7 +174,22 @@ PWA_BASE_URL=http://localhost:3300 npm run check:flows
 Hosted on Vercel, functions in Mumbai (`bom1`, set in `vercel.json`) next to
 the Supabase project in `ap-south-1`.
 
-1. Import the GitHub repo into Vercel.
+Live at https://kingofnames.app (Vercel team "King of Names", project
+`king-of-names`). Until the GitHub repo is connected to the project, deploy
+from a checkout with the Vercel CLI; `.vercelignore` keeps `.env.local` and
+local folders out of the upload, and Vercel builds with the project's own
+variables:
+
+```bash
+npx vercel@latest deploy --prod --scope king-of-names
+```
+
+Then run the end-to-end checks against the live site, e.g.
+`PWA_BASE_URL=https://kingofnames.app npm run check:real` (and `check:notes`,
+`check:qr`). Once the repo is connected (`vercel git connect`), every push to
+`main` deploys on its own.
+
+1. Import the GitHub repo into Vercel (or deploy with the CLI as above).
 2. Add every variable from `.env.example` for Production and Preview.
 3. Apply migrations to the production Supabase project (see [Database](#database)).
 4. In Supabase Auth settings, set the Site URL to the production URL and add
