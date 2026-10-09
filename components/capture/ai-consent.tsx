@@ -26,15 +26,15 @@ function saveAiConsent() {
 // Shown once, before the first recording: what leaves the phone and where it goes.
 export function AiConsentSheet({ onAgree, onCancel }: { onAgree: () => void; onCancel: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-end bg-scrim animate-in fade-in-0 duration-200 sm:items-center sm:justify-center" role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="ai-consent-title"
-        className="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-background px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
+        className="max-h-[90dvh] w-full overflow-y-auto sheet rounded-t-4xl bg-popover px-5 pt-5 text-popover-foreground shadow-sheet animate-in slide-in-from-bottom duration-280 ease-out pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
       >
         <ShieldCheckIcon className="size-7 text-primary" aria-hidden />
-        <h2 id="ai-consent-title" className="mt-3 text-2xl font-semibold tracking-tight">
+        <h2 id="ai-consent-title" className="mt-3 type-sheet-title">
           Before your first note
         </h2>
         <p className="mt-2 text-[0.95rem] text-muted-foreground">

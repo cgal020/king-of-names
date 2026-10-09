@@ -66,11 +66,11 @@ try {
   await page.unroute(upload);
   await page.goto(BASE + "/capture", { waitUntil: "networkidle" });
   await expect(page.getByText("Waiting note sent")).toBeVisible({ timeout: 15000 });
-  await expect(page.getByText("3 notes need review")).toBeVisible();
+  await expect(page.getByText("3 notes to review")).toBeVisible();
   await expect(page.getByText("From Gallery night")).toBeVisible();
-  pass("back online the waiting take is sent; Capture shows 3 notes need review");
+  pass("back online the waiting take is sent; Capture shows 3 notes to review");
 
-  await page.getByText("3 notes need review").click();
+  await page.getByText("3 notes to review").click();
   await page.waitForURL("**/capture/event");
   await page.waitForTimeout(3000);
   await page.getByRole("link", { name: "Review next" }).click();
@@ -87,8 +87,8 @@ try {
 
   await page.getByRole("link", { name: "Review later" }).click();
   await page.waitForURL("**/capture");
-  await expect(page.getByText("2 notes need review")).toBeVisible();
-  pass("Review later leaves the rest under needs review");
+  await expect(page.getByText("2 notes to review")).toBeVisible();
+  pass("Review later leaves the rest under to review");
 
   for (let i = 0; i < 2; i++) {
     await page.goto(BASE + "/capture/event", { waitUntil: "networkidle" });
@@ -101,7 +101,7 @@ try {
   await expect(page.getByText("all reviewed")).toBeVisible();
   await page.getByRole("button", { name: "Done" }).click();
   await page.waitForURL("**/capture");
-  await expect(page.getByText("1 note needs review")).toBeVisible(); // back to the sample strip
+  await expect(page.getByText("1 note to review")).toBeVisible(); // back to the sample strip
   await expect(page.getByText("Event mode ·")).toHaveCount(0);
   pass("discarding the rest and tapping Done closes the event");
 

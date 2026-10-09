@@ -55,9 +55,13 @@ export function SaveContactButton({ person, className }: { person: Person; class
   }
 
   return (
-    <Button variant="outline" size="touch-lg" onClick={save} className={cn("justify-start", className)}>
-      <ContactRoundIcon aria-hidden className="text-primary" />
-      Save to contacts
+    <Button
+      variant="ghost"
+      onClick={save}
+      className={cn("h-16 flex-col gap-1 rounded-xl bg-muted text-[0.8125rem] text-primary [&_svg:not([class*='size-'])]:size-4.5", className)}
+    >
+      <ContactRoundIcon aria-hidden strokeWidth={1.9} />
+      Save contact
     </Button>
   );
 }

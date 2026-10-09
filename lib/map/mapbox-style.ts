@@ -24,13 +24,29 @@ export function mapStyle(): StyleSpecification | string {
   return STYLE ?? "mapbox://styles/mapbox/standard";
 }
 
-// Mapbox Standard: day or night to match the app, without shop and
-// restaurant labels competing with the pins.
+// Mapbox Standard: day or night to match the app, in the monochrome theme so
+// the map recedes behind the pins, without shop, restaurant or transit labels.
 export function mapConfig(dark: boolean) {
-  return STYLE ? undefined : { basemap: { lightPreset: dark ? "night" : "day", showPointOfInterestLabels: false } };
+  return STYLE
+    ? undefined
+    : {
+        basemap: {
+          lightPreset: dark ? "night" : "day",
+          theme: "monochrome",
+          showPointOfInterestLabels: false,
+          showTransitLabels: false,
+        },
+      };
 }
 
 export const accentFor = (dark: boolean) => (dark ? appConfig.accent.dark : appConfig.accent.light);
+
+// Pin, cluster and label colours for the live map, from the theme tokens.
+export function mapColors(dark: boolean) {
+  return dark
+    ? { primary: appConfig.accent.dark, onPrimary: "#0f1412", card: "#16201c", foreground: "#efe7d6", background: appConfig.background.dark }
+    : { primary: appConfig.accent.light, onPrimary: "#f6f1e6", card: "#fffaf0", foreground: "#1d2a24", background: appConfig.background.light };
+}
 
 // A still image of one pin, from Mapbox's Static Images API: far cheaper than
 // a live map for a picture nobody pans (billed per 1,000 images, with a free

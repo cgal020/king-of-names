@@ -63,10 +63,10 @@ export function AskScreen({ people }: { people: Person[] }) {
 
       {people.length === 0 ? (
         <section className="pt-6">
-          <h2 className="max-w-[20ch] text-[1.75rem] leading-tight font-semibold tracking-tight">
+          <h2 className="type-sheet-title max-w-[20ch]">
             Nothing to ask about yet
           </h2>
-          <p className="mt-2 max-w-[38ch] text-[0.95rem] text-muted-foreground">
+          <p className="mt-2 max-w-[38ch] text-[1.0625rem] leading-relaxed text-muted-foreground">
             Ask answers from the people you&rsquo;ve saved. Record a few notes first, then ask things like
             &ldquo;Who did I meet in Dubai?&rdquo;
           </p>
@@ -77,10 +77,10 @@ export function AskScreen({ people }: { people: Person[] }) {
         </section>
       ) : entries.length === 0 ? (
         <section className="pt-6">
-          <h2 className="max-w-[20ch] text-[1.75rem] leading-tight font-semibold tracking-tight">
+          <h2 className="type-sheet-title max-w-[20ch]">
             What do you want to know about your people?
           </h2>
-          <p className="mt-2 text-[0.95rem] text-muted-foreground">
+          <p className="mt-2 text-[1.0625rem] leading-relaxed text-muted-foreground">
             Ask by place, tag, date or name. Answers come only from your own notes.
           </p>
           <ul className="mt-6 divide-y border-y">
@@ -124,7 +124,7 @@ export function AskScreen({ people }: { people: Person[] }) {
                 enterKeyHint="send"
                 placeholder={listening ? "Listening…" : "Ask anything about your people"}
                 aria-label="Your question"
-                className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40"
+                className="h-12 w-full rounded-xl bg-muted pr-12 pl-4 text-[1.0625rem] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
               />
               <button
                 type="button"

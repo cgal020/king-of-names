@@ -18,15 +18,15 @@ const MapboxPicker = dynamic(() => import("@/components/map/pin-mover-mapbox"), 
 export function PinMover({ start, onDone, onCancel }: { start: LatLng; onDone: (at: LatLng) => void; onCancel: () => void }) {
   const [at, setAt] = useState(start);
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-end bg-scrim animate-in fade-in-0 duration-200 sm:items-center sm:justify-center" role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="pin-mover-title"
-        className="flex max-h-[95dvh] w-full flex-col overflow-hidden rounded-t-3xl bg-background sm:max-w-md sm:rounded-3xl"
+        className="flex max-h-[95dvh] w-full flex-col overflow-hidden rounded-t-4xl bg-popover text-popover-foreground shadow-sheet animate-in slide-in-from-bottom duration-280 ease-out sm:max-w-md sm:rounded-3xl"
       >
         <div className="px-5 pt-5 pb-3">
-          <h2 id="pin-mover-title" className="text-2xl font-semibold tracking-tight">
+          <h2 id="pin-mover-title" className="type-sheet-title">
             Move the pin
           </h2>
           <p className="mt-1 text-[0.95rem] text-muted-foreground">Drag the map until the pin sits where you met.</p>

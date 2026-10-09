@@ -13,7 +13,7 @@ export default async function EditPersonPage({ params }: PageProps<"/people/[id]
   return (
     <main className="mx-auto max-w-xl px-5">
       <ScreenHeader back={{ href: `/people/${personId}`, label: "Back" }} showSettings={false} />
-      <h1 className="mt-1 mb-6 text-2xl font-semibold tracking-tight">Edit</h1>
+      <h1 className="type-heading mt-1 mb-6">Edit</h1>
       <PersonForm mode="edit" initial={initial} personId={personId} />
     </main>
   );

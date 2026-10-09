@@ -23,13 +23,13 @@ export function ScreenHeader({ title, back, actions, showSettings = true, classN
         {back ? (
           <Link
             href={back.href}
-            className="-ml-2 flex h-11 items-center gap-0.5 rounded-xl pr-3 pl-1 text-[0.95rem] font-medium text-primary"
+            className="-ml-2 flex h-11 items-center gap-0.5 rounded-xl pr-3 pl-1 text-[0.9375rem] font-semibold text-primary"
           >
             <ChevronLeftIcon className="size-5" aria-hidden />
             {back.label}
           </Link>
         ) : (
-          title && <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+          title && <h1 className="type-heading truncate py-1">{title}</h1>
         )}
       </div>
       <div className="flex items-center gap-1">

@@ -211,7 +211,7 @@ function Section({
 }) {
   return (
     <section>
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      <h2 className="type-section">{title}</h2>
       {description && <p className="mt-1 text-[0.95rem] text-muted-foreground">{description}</p>}
       <div className="mt-3">{children}</div>
     </section>

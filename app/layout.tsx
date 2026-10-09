@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorker } from "@/components/service-worker";
 import { appConfig } from "@/lib/config";
+import { fontVariables } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -33,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // Browser extensions (screen recorders, password managers) add attributes to
     // <html> before React loads; this ignores those on this one element only.
-    <html lang="en" className="font-sans antialiased" suppressHydrationWarning>
+    <html lang="en" className={`${fontVariables} font-sans antialiased`} suppressHydrationWarning>
       <head>
         <style>{brandCss}</style>
       </head>

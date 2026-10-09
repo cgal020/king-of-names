@@ -1,6 +1,6 @@
 "use client";
 
-import { MicIcon, SquareIcon } from "lucide-react";
+import { MicIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type RecordButtonProps = {
@@ -13,47 +13,34 @@ type RecordButtonProps = {
   onPress: () => void;
 };
 
-const RING_RADIUS = 86;
-const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
+const RING_MASK = "radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 5px))";
 
+// Idle: the gold mic with a hairline ring. Recording: recording red, a halo
+// that follows the voice and a ring that fills toward the 90 second cap, so
+// the state is unmistakable even in a dark bar.
 export function RecordButton({ recording, level, progress, disabled, onPress }: RecordButtonProps) {
   return (
-    <div className="relative grid size-48 place-items-center">
+    <div className="relative grid size-44 place-items-center">
+      {/* Progress toward the 90 second cap: a 6px ring. */}
+      <span
+        aria-hidden
+        className={cn("absolute inset-0 rounded-full transition-opacity duration-200", !recording && "opacity-0")}
+        style={{
+          background: `conic-gradient(var(--recording) 0 ${progress * 360}deg, var(--muted) ${progress * 360}deg 360deg)`,
+          mask: RING_MASK,
+          WebkitMask: RING_MASK,
+        }}
+      />
+
       {/* Level halo: grows with the voice while recording. */}
       <span
         aria-hidden
         className={cn(
-          "absolute inset-6 rounded-full bg-primary/15 transition-[transform,opacity] duration-100 ease-out",
-          recording ? "opacity-100" : "scale-90 opacity-0",
+          "absolute inset-5 rounded-full bg-recording transition-[transform,opacity] duration-100 ease-out",
+          recording ? "opacity-35" : "scale-90 opacity-0",
         )}
-        style={recording ? { transform: `scale(${1 + level * 0.32})` } : undefined}
+        style={recording ? { transform: `scale(${1 + level * 0.34})` } : undefined}
       />
-
-      {/* Progress toward the 90 second cap. */}
-      <svg aria-hidden viewBox="0 0 192 192" className="absolute inset-0 -rotate-90">
-        <circle
-          cx="96"
-          cy="96"
-          r={RING_RADIUS}
-          fill="none"
-          strokeWidth="3"
-          className={cn("stroke-border transition-opacity duration-200", !recording && "opacity-0")}
-        />
-        <circle
-          cx="96"
-          cy="96"
-          r={RING_RADIUS}
-          fill="none"
-          strokeWidth="3"
-          strokeLinecap="round"
-          strokeDasharray={RING_LENGTH}
-          strokeDashoffset={RING_LENGTH * (1 - progress)}
-          className={cn(
-            "stroke-primary transition-[stroke-dashoffset,opacity] duration-300 ease-linear",
-            !recording && "opacity-0",
-          )}
-        />
-      </svg>
 
       <button
         type="button"
@@ -62,15 +49,17 @@ export function RecordButton({ recording, level, progress, disabled, onPress }: 
         aria-label={recording ? "Stop recording" : "Start recording"}
         aria-pressed={recording}
         className={cn(
-          "relative grid size-34 place-items-center rounded-full bg-primary text-primary-foreground",
-          "shadow-[0_10px_30px_-10px_var(--brand)] transition-transform duration-150 ease-out",
-          "outline-none focus-visible:ring-4 focus-visible:ring-ring/40 active:scale-95 disabled:opacity-60",
+          "relative grid size-34 place-items-center rounded-full outline-none",
+          "transition-[transform,background-color] duration-120 ease-out active:scale-[0.96] disabled:opacity-40",
+          recording
+            ? "bg-recording focus-visible:shadow-[0_0_0_4px_var(--background),0_0_0_7px_var(--ring)]"
+            : "bg-(image:--brand-gold-gradient) text-brand-gold-foreground shadow-[0_0_0_7px_var(--background),0_0_0_8px_var(--brand-gold)] focus-visible:shadow-[0_0_0_4px_var(--background),0_0_0_7px_var(--ring)] active:bg-brand-gold active:bg-none",
         )}
       >
         {recording ? (
-          <SquareIcon className="size-9 fill-current" strokeWidth={0} aria-hidden />
+          <span className="size-10 rounded-[9px] bg-white" aria-hidden />
         ) : (
-          <MicIcon className="size-11" strokeWidth={1.75} aria-hidden />
+          <MicIcon className="size-11" strokeWidth={1.9} aria-hidden />
         )}
       </button>
     </div>

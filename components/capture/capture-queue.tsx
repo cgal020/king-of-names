@@ -167,10 +167,10 @@ export function useCaptureQueue() {
 export function WaitingToSend({ waiting, sending, onSend }: { waiting: number; sending: boolean; onSend: () => void }) {
   if (!waiting) return null;
   return (
-    <div className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed px-4 py-3">
-      <CloudUploadIcon className={sending ? "size-5 animate-pulse text-primary" : "size-5 text-muted-foreground"} aria-hidden />
+    <div className="mt-2.5 flex min-h-14 items-center gap-3 rounded-2xl bg-muted px-3.5 py-3">
+      <CloudUploadIcon className={sending ? "size-5 animate-blink text-primary" : "size-5 text-muted-foreground"} aria-hidden />
       <span className="min-w-0 flex-1 text-sm">
-        <span className="block font-medium">
+        <span className="block text-[0.9375rem] font-semibold">
           {waiting === 1 ? "1 note waiting to send" : `${waiting} notes waiting to send`}
         </span>
         <span className="block text-muted-foreground">Saved on this phone. Sends when you&rsquo;re online.</span>
@@ -179,7 +179,7 @@ export function WaitingToSend({ waiting, sending, onSend }: { waiting: number; s
         type="button"
         onClick={onSend}
         disabled={sending}
-        className="h-9 shrink-0 rounded-lg px-2 text-sm font-medium text-primary disabled:opacity-50"
+        className="h-11 shrink-0 rounded-lg px-2 text-[0.9375rem] font-semibold text-primary disabled:opacity-40"
       >
         {sending ? "Sending…" : "Send now"}
       </button>
@@ -191,11 +191,11 @@ export function WaitingToSend({ waiting, sending, onSend }: { waiting: number; s
 // silently, and the user decides when to remove them.
 export function CouldNotSend({ notes, onRemove }: { notes: RejectedNote[]; onRemove: (id: string) => void }) {
   return notes.map((note) => (
-    <div key={note.id} className="mt-2 flex items-center gap-3 rounded-2xl border border-destructive/40 px-4 py-3">
+    <div key={note.id} className="mt-2.5 flex min-h-14 items-center gap-3 rounded-2xl bg-destructive-soft px-3.5 py-3">
       <CircleAlertIcon className="size-5 shrink-0 text-destructive" aria-hidden />
       <span className="min-w-0 flex-1 text-sm">
-        <span className="block font-medium">This note couldn&rsquo;t be sent</span>
-        <span className="block text-muted-foreground">{note.reason}</span>
+        <span className="block text-[0.9375rem] font-semibold text-destructive">This note couldn&rsquo;t be sent</span>
+        <span className="block text-foreground">{note.reason}</span>
       </span>
       <ConfirmButton
         label="Remove"
@@ -203,7 +203,7 @@ export function CouldNotSend({ notes, onRemove }: { notes: RejectedNote[]; onRem
         description="The recording is deleted from this phone. This can’t be undone."
         confirmLabel="Remove"
         variant="ghost"
-        className="h-9 shrink-0 px-2 text-sm text-destructive"
+        className="h-11 shrink-0 px-2 text-[0.9375rem] font-semibold text-foreground underline underline-offset-3"
         onConfirm={() => onRemove(note.id)}
       />
     </div>

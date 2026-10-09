@@ -8,7 +8,7 @@ export default function OfflinePage() {
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-4 px-6 pb-[max(3rem,env(safe-area-inset-bottom))]">
       <WifiOffIcon className="size-8 text-muted-foreground" aria-hidden />
-      <h1 className="text-3xl font-semibold tracking-tight">You&rsquo;re offline</h1>
+      <h1 className="type-display">You&rsquo;re offline</h1>
       <p className="text-muted-foreground">
         You can still record notes. They stay on your phone and are sent as soon as you&rsquo;re back online.
       </p>

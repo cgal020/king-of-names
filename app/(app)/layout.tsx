@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </p>
       <div className="pb-(--tabbar-h)">{children}</div>
       <TabBar />
-      <Toaster position="top-center" />
+      <Toaster />
     </AppProviders>
   );
 }

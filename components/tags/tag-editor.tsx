@@ -151,12 +151,12 @@ export function TagList({
   return (
     <ul className={cn("flex flex-wrap gap-1.5", className)} aria-label="Tags">
       {label && (
-        <li className="flex h-7 items-center rounded-full border px-2.5 text-[0.8rem] font-medium text-muted-foreground">
+        <li className="flex h-7 items-center rounded-full border border-border px-[11px] text-[0.8125rem] text-muted-foreground">
           {label}
         </li>
       )}
       {tags.map((tag) => (
-        <li key={tag} className="flex h-7 items-center rounded-full bg-primary/10 px-2.5 text-[0.8rem] font-medium text-primary">
+        <li key={tag} className="flex h-7 items-center rounded-full bg-accent px-[11px] text-[0.8125rem] font-medium text-accent-foreground">
           {tag}
         </li>
       ))}

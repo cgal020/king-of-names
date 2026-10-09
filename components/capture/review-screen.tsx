@@ -9,6 +9,7 @@ import { eventActions, takeAudio, useEventSession } from "@/components/capture/e
 import { PersonForm } from "@/components/person-form";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { formatDuration, formatMetDateTime } from "@/lib/format";
 import { mockDraft } from "@/lib/mock/people";
 import { reviewStateDraft, type ReviewState } from "@/lib/mock/review-states";
@@ -97,11 +98,11 @@ function PipelineNotice({ draft }: { draft: Draft }) {
 
   if (failed.includes("transcription")) {
     return (
-      <Notice icon={<AudioLinesIcon className="size-5" aria-hidden />} title="We couldn’t turn this recording into text">
+      <Notice tone="error" icon={<AudioLinesIcon className="size-5" aria-hidden />} title="We couldn’t turn this recording into text">
         <p>
           Your recording is safe. Try again in a moment, or play it below and type in what you need.
         </p>
-        <Button size="touch" className="mt-3 self-start" disabled={retrying} onClick={retry}>
+        <Button variant="outline" className="mt-3 h-9 self-start rounded-xl bg-background px-3.5" disabled={retrying} onClick={retry}>
           {retrying ? "Trying again…" : "Try again"}
         </Button>
       </Notice>
@@ -121,13 +122,31 @@ function PipelineNotice({ draft }: { draft: Draft }) {
   );
 }
 
-function Notice({ icon, title, children }: { icon: React.ReactNode; title: string; children: React.ReactNode }) {
+// Errors on destructive-soft, softer problems on warning-soft; always an
+// icon and words, never colour alone.
+function Notice({
+  icon,
+  title,
+  tone = "warning",
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  tone?: "warning" | "error";
+  children: React.ReactNode;
+}) {
   return (
-    <div role="status" className="mb-6 flex gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-[0.95rem]">
-      <span className="mt-0.5 text-amber-700 dark:text-amber-400">{icon}</span>
+    <div
+      role="status"
+      className={cn(
+        "mb-6 flex gap-3 rounded-2xl px-4 py-3.5 text-[0.9375rem]",
+        tone === "error" ? "bg-destructive-soft" : "bg-warning-soft",
+      )}
+    >
+      <span className={cn("mt-0.5", tone === "error" ? "text-destructive" : "text-warning")}>{icon}</span>
       <div className="flex min-w-0 flex-col">
-        <p className="font-medium">{title}</p>
-        <div className="text-muted-foreground">{children}</div>
+        <p className={cn("font-semibold", tone === "error" ? "text-destructive" : "text-warning")}>{title}</p>
+        <div className="text-sm text-foreground">{children}</div>
       </div>
     </div>
   );

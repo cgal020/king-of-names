@@ -236,7 +236,7 @@ function PanelHeader({
         </button>
       )}
       <div className="flex items-baseline justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="type-sheet-title">{title}</h1>
         {subtitle && <span className="text-sm text-muted-foreground">{subtitle}</span>}
       </div>
     </div>
@@ -350,7 +350,7 @@ function TripPanel({
           aria-label="City"
           value={city}
           onChange={(e) => onChange(e.target.value, from, to)}
-          className="col-span-2 h-11 rounded-xl border border-input bg-background px-3 text-base"
+          className="col-span-2 h-13 rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
         >
           {cities.map((c) => (
             <option key={c.city} value={c.city}>
@@ -363,7 +363,7 @@ function TripPanel({
           aria-label="Arriving"
           value={from}
           onChange={(e) => e.target.value && onChange(city, e.target.value, e.target.value > to ? e.target.value : to)}
-          className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+          className="h-13 rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
         />
         <input
           type="date"
@@ -371,7 +371,7 @@ function TripPanel({
           value={to}
           min={from}
           onChange={(e) => e.target.value && onChange(city, from, e.target.value)}
-          className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+          className="h-13 rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
         />
       </div>
 
@@ -500,7 +500,7 @@ function PersonCard({ person: p, onClose }: { person: Person; onClose: () => voi
       <div className="flex items-start justify-between gap-3">
         <PersonAvatar personId={p.id} name={p.full_name} size={52} className="mt-1" />
         <div className="min-w-0 flex-1 pt-1">
-          <h1 className="text-2xl font-semibold tracking-tight">{p.full_name}</h1>
+          <h1 className="type-sheet-title not-italic"><bdi dir="auto">{p.full_name}</bdi></h1>
           <p className="mt-1 text-[0.95rem] text-muted-foreground">
             {[p.place_name, p.city].filter(Boolean).join(", ")} &middot; {formatMetDate(p.met_at, p.met_timezone)}
           </p>

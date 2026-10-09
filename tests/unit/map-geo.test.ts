@@ -10,7 +10,7 @@ describe("peopleToGeoJson", () => {
     expect(pins.features).toHaveLength(located.length);
     const first = pins.features[0];
     expect(first.geometry.coordinates).toEqual([located[0].lng, located[0].lat]);
-    expect(Object.keys(first.properties).sort()).toEqual(["city", "id", "met_at", "name"]);
+    expect(Object.keys(first.properties).sort()).toEqual(["city", "id", "initials", "met_at", "name"]);
     expect(JSON.stringify(pins)).not.toContain(located[0].notes ?? "\u0000");
   });
 
@@ -52,10 +52,10 @@ describe("staticMapUrl", () => {
   it("asks Mapbox for a small light or dark image with one pin in the app's colour", async () => {
     const { staticMapUrl } = await import("@/lib/map/mapbox-style");
     const light = new URL(staticMapUrl({ lat: 25.0805, lng: 55.1403, width: 600, height: 240, dark: false, token: "pk.abc" }));
-    expect(light.pathname).toBe("/styles/v1/mapbox/light-v11/static/pin-s+1f6f5c(55.14030,25.08050)/55.14030,25.08050,14,0/600x240@2x");
+    expect(light.pathname).toBe("/styles/v1/mapbox/light-v11/static/pin-s+1f4d3d(55.14030,25.08050)/55.14030,25.08050,14,0/600x240@2x");
     expect(light.searchParams.get("access_token")).toBe("pk.abc");
     const dark = staticMapUrl({ lat: 25.0805, lng: 55.1403, width: 2000, height: 240, dark: true, token: "pk.abc" });
-    expect(dark).toContain("/dark-v11/static/pin-s+5fbfa4(");
+    expect(dark).toContain("/dark-v11/static/pin-s+c9a96a(");
     expect(dark).toContain("/1280x240@2x");
   });
 });

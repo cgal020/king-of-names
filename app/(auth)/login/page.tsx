@@ -9,8 +9,8 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
   const { next, deleted } = await searchParams;
   return (
     <>
-      <h1 className="text-[2rem] leading-tight font-semibold tracking-tight">Remember everyone you meet.</h1>
-      <p className="mt-2 mb-8 text-[0.95rem] text-muted-foreground">
+      <h1 className="type-display">Remember everyone you meet.</h1>
+      <p className="mt-3 mb-8 text-[1.0625rem] leading-relaxed text-muted-foreground">
         Say a name and a detail after you meet someone. {appConfig.name} keeps where and when, and finds them for
         you later.
       </p>

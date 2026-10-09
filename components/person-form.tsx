@@ -14,7 +14,7 @@ import { OriginalNote } from "@/components/original-note";
 import { PhotoStrip } from "@/components/photos/photo-strip";
 import { usePhotos, usePhotosFor } from "@/components/photos/photo-store";
 import { TagEditor } from "@/components/tags/tag-editor";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { mergeCard, type CardField } from "@/lib/cards/merge";
@@ -202,7 +202,7 @@ export function PersonForm({
       <div className="space-y-7">
         {/* Name */}
         <div>
-          <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium text-muted-foreground">
+          <label htmlFor="full_name" className="mb-1.5 block text-sm font-medium">
             Name
             {fromCard("full_name") && <FromCard />}
           </label>
@@ -217,13 +217,14 @@ export function PersonForm({
             autoCapitalize="words"
             placeholder="Their name"
             aria-describedby={flagName ? "name-hint" : undefined}
+            dir="auto"
             className={cn(
-              "h-14 rounded-xl px-3.5 text-[1.625rem] font-semibold tracking-tight md:text-[1.625rem]",
-              flagName && "border-amber-500 ring-3 ring-amber-500/20 dark:border-amber-400",
+              "h-17 font-serif text-[2.1875rem]",
+              flagName && "border-warning shadow-[inset_0_0_0_1px_var(--warning)] focus-visible:ring-warning/25",
             )}
           />
           {flagName && (
-            <p id="name-hint" className="mt-2 flex items-center gap-1.5 text-sm text-amber-700 dark:text-amber-300">
+            <p id="name-hint" className="mt-2 flex items-center gap-1.5 text-sm font-medium text-warning">
               <CircleAlertIcon className="size-4 shrink-0" aria-hidden />
               Check the spelling. The name was hard to make out.
             </p>
@@ -246,7 +247,6 @@ export function PersonForm({
               value={values.where_met_text ?? ""}
               onChange={(e) => set("where_met_text", e.target.value)}
               placeholder="In your words, e.g. Omar's dinner at Zuma"
-              className="h-11 rounded-xl px-3.5"
             />
           </Field>
 
@@ -296,7 +296,7 @@ export function PersonForm({
             {changingCity && (
               <select
                 aria-label="City"
-                className="mt-2 h-11 w-full rounded-xl border border-input bg-background px-3 text-base"
+                className="mt-2 h-13 w-full rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
                 value={values.city ?? ""}
                 onChange={(e) => {
                   const entry = mockCities.find((c) => c.city === e.target.value);
@@ -332,7 +332,6 @@ export function PersonForm({
               type="datetime-local"
               value={values.met_at_local}
               onChange={(e) => set("met_at_local", e.target.value)}
-              className="h-11 rounded-xl px-3.5"
             />
           </Field>
         </div>
@@ -372,14 +371,12 @@ export function PersonForm({
               value={values.follow_up_note ?? ""}
               onChange={(e) => set("follow_up_note", e.target.value)}
               placeholder="Remind me to…"
-              className="h-11 rounded-xl px-3.5"
             />
             <Input
               aria-label="Follow-up date"
               type="date"
               value={values.follow_up_date ?? ""}
               onChange={(e) => set("follow_up_date", e.target.value || null)}
-              className="h-11 rounded-xl px-3.5"
             />
           </fieldset>
         )}
@@ -392,7 +389,6 @@ export function PersonForm({
               inputMode="tel"
               value={values.phone ?? ""}
               onChange={(e) => set("phone", e.target.value)}
-              className="h-11 rounded-xl px-3.5"
             />
           </Field>
         )}
@@ -408,7 +404,7 @@ export function PersonForm({
                 aria-label="Birthday day"
                 value={values.birthday_day ?? ""}
                 onChange={(e) => set("birthday_day", e.target.value ? Number(e.target.value) : null)}
-                className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+                className="h-13 rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
               >
                 <option value="">Day</option>
                 {Array.from({ length: 31 }, (_, i) => (
@@ -421,7 +417,7 @@ export function PersonForm({
                 aria-label="Birthday month"
                 value={values.birthday_month ?? ""}
                 onChange={(e) => set("birthday_month", e.target.value ? Number(e.target.value) : null)}
-                className="h-11 rounded-xl border border-input bg-background px-3 text-base"
+                className="h-13 rounded-xl border border-input bg-card px-3.5 text-[1.0625rem]"
               >
                 <option value="">Month</option>
                 {Array.from({ length: 12 }, (_, i) => (
@@ -439,7 +435,6 @@ export function PersonForm({
                   const digits = e.target.value.replace(/\D/g, "").slice(0, 4);
                   set("birthday_year", digits ? Number(digits) : null);
                 }}
-                className="h-11 rounded-xl px-3"
               />
             </div>
           </fieldset>
@@ -452,7 +447,6 @@ export function PersonForm({
                 id="company"
                 value={values.extras.company ?? ""}
                 onChange={(e) => setExtra("company", e.target.value)}
-                className="h-11 rounded-xl px-3.5"
               />
             </Field>
             <Field label="Role" htmlFor="role" fromCard={fromCard("role")}>
@@ -460,7 +454,6 @@ export function PersonForm({
                 id="role"
                 value={values.extras.role ?? ""}
                 onChange={(e) => setExtra("role", e.target.value)}
-                className="h-11 rounded-xl px-3.5"
               />
             </Field>
           </div>
@@ -474,7 +467,6 @@ export function PersonForm({
               inputMode="email"
               value={values.extras.email ?? ""}
               onChange={(e) => setExtra("email", e.target.value)}
-              className="h-11 rounded-xl px-3.5"
             />
           </Field>
         )}
@@ -489,7 +481,6 @@ export function PersonForm({
                   inputMode="url"
                   value={values.extras.website ?? ""}
                   onChange={(e) => setExtra("website", e.target.value)}
-                  className="h-11 rounded-xl px-3.5"
                 />
               </Field>
             )}
@@ -501,7 +492,6 @@ export function PersonForm({
                   inputMode="url"
                   value={values.extras.linkedin ?? ""}
                   onChange={(e) => setExtra("linkedin", e.target.value)}
-                  className="h-11 rounded-xl px-3.5"
                 />
               </Field>
             )}
@@ -513,7 +503,6 @@ export function PersonForm({
                   inputMode="url"
                   value={values.extras.line ?? ""}
                   onChange={(e) => setExtra("line", e.target.value)}
-                  className="h-11 rounded-xl px-3.5"
                 />
               </Field>
             )}
@@ -525,7 +514,6 @@ export function PersonForm({
                   inputMode="url"
                   value={values.extras.digital_card ?? ""}
                   onChange={(e) => setExtra("digital_card", e.target.value)}
-                  className="h-11 rounded-xl px-3.5"
                 />
               </Field>
             )}
@@ -538,7 +526,6 @@ export function PersonForm({
               id="address"
               value={values.extras.address ?? ""}
               onChange={(e) => setExtra("address", e.target.value)}
-              className="h-11 rounded-xl px-3.5"
             />
           </Field>
         )}
@@ -573,7 +560,7 @@ export function PersonForm({
       </div>
 
       {/* Actions stay in thumb reach, above the tab bar. */}
-      <div className="fixed inset-x-0 bottom-(--tabbar-h) z-20 border-t bg-background/95 backdrop-blur-md">
+      <div className="fixed inset-x-0 bottom-(--tabbar-h) z-20 border-t bg-background/95 pb-(--bar-pad) backdrop-blur-md">
         <div className="mx-auto flex max-w-xl gap-3 px-5 py-3">
           {mode === "review" ? (
             <ConfirmButton
@@ -588,7 +575,7 @@ export function PersonForm({
           ) : (
             <Link
               href={personId ? `/people/${personId}` : "/people"}
-              className="flex h-12 flex-1 items-center justify-center rounded-xl border text-base font-medium transition-colors hover:bg-muted"
+              className={cn(buttonVariants({ variant: "outline", size: "touch-lg" }), "flex-1")}
             >
               Cancel
             </Link>
@@ -604,7 +591,7 @@ export function PersonForm({
 
 function FromCard() {
   return (
-    <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+    <span className="ml-2 inline-flex items-center gap-1 text-xs font-semibold text-success">
       <ScanTextIcon className="size-3" aria-hidden />
       From card
     </span>
@@ -624,7 +611,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium text-muted-foreground">
+      <label htmlFor={htmlFor} className="mb-1.5 block text-sm font-medium">
         {label}
         {fromCard && <FromCard />}
       </label>

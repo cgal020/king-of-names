@@ -3,8 +3,8 @@ import { hasMapbox, staticMapUrl } from "@/lib/map/mapbox-style";
 import { WORLD_LAND_PATH } from "@/lib/mock/world-path";
 import { cn } from "@/lib/utils";
 
-const WIDTH = 600;
-const HEIGHT = 240;
+const WIDTH = 716;
+const HEIGHT = 280;
 
 // Small map with one pin, on Review and profiles. With a Mapbox token it's a
 // still image (a live map here would be a billed load per view); without one,
@@ -12,7 +12,7 @@ const HEIGHT = 240;
 export function MiniMap({ lat, lng, className }: { lat: number | null; lng: number | null; className?: string }) {
   if (lat === null || lng === null) {
     return (
-      <div className={cn("grid h-32 place-items-center rounded-2xl bg-muted text-sm text-muted-foreground", className)}>
+      <div className={cn("grid h-35 place-items-center rounded-[18px] bg-muted text-sm text-muted-foreground", className)}>
         <span className="flex items-center gap-2">
           <MapPinOffIcon className="size-4" aria-hidden />
           No GPS location recorded
@@ -24,7 +24,7 @@ export function MiniMap({ lat, lng, className }: { lat: number | null; lng: numb
   if (hasMapbox()) {
     const url = (dark: boolean) => staticMapUrl({ lat, lng, width: WIDTH, height: HEIGHT, dark });
     return (
-      <picture className={cn("block h-32 overflow-hidden rounded-2xl bg-muted ring-1 ring-border ring-inset", className)}>
+      <picture className={cn("block h-35 overflow-hidden rounded-[18px] bg-muted", className)}>
         <source media="(prefers-color-scheme: dark)" srcSet={url(true)} />
         {/* A plain img: next/image would proxy the Mapbox image through the server. */}
         <img src={url(false)} alt="Map of where you met" width={WIDTH} height={HEIGHT} loading="lazy" className="size-full object-cover" />
@@ -40,7 +40,7 @@ export function MiniMap({ lat, lng, className }: { lat: number | null; lng: numb
   return (
     <div
       className={cn(
-        "relative h-32 overflow-hidden rounded-2xl bg-[color-mix(in_oklch,var(--primary)_7%,var(--muted))] ring-1 ring-border ring-inset",
+        "relative h-35 overflow-hidden rounded-[18px] bg-[color-mix(in_oklch,var(--primary)_7%,var(--muted))]",
         className,
       )}
     >

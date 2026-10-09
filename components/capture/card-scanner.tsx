@@ -356,7 +356,7 @@ function ResultSheet({
   ].filter((r) => r.value);
 
   return (
-    <div className="absolute inset-x-0 bottom-0 max-h-[75%] overflow-y-auto rounded-t-3xl bg-background px-5 pt-3 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl">
+    <div className="absolute inset-x-0 bottom-0 max-h-[75%] overflow-y-auto sheet rounded-t-4xl bg-popover px-5 pt-5 text-popover-foreground shadow-sheet pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl">
       <span className="mx-auto mb-3 block h-1 w-9 rounded-full bg-border" aria-hidden />
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
         {result.source === "qr" ? (

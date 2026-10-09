@@ -42,7 +42,7 @@ export function EventTakes() {
         <ScreenHeader title="Event" back={{ href: "/capture", label: "Capture" }} showSettings={false} />
         <div className="mt-10 flex flex-col items-start gap-3">
           <PartyPopperIcon className="size-8 text-muted-foreground" aria-hidden />
-          <h2 className="text-xl font-semibold tracking-tight">No event right now</h2>
+          <h2 className="type-sheet-title">No event right now</h2>
           <p className="max-w-[40ch] text-[0.95rem] text-muted-foreground">
             Going somewhere busy? Start event mode on Capture. Each tap of the mic saves a quick take, and you
             review them all here afterwards.
@@ -69,8 +69,8 @@ export function EventTakes() {
   return (
     <main className="mx-auto max-w-xl px-5 pb-8">
       <ScreenHeader back={{ href: "/capture", label: "Capture" }} showSettings={false} />
-      <p className="text-sm font-medium text-primary">{live ? "Going on now" : "Event over"}</p>
-      <h1 className="mt-1 text-[2rem] leading-tight font-semibold tracking-tight">{event.name}</h1>
+      <p className="type-section">{live ? "Going on now" : "Event over"}</p>
+      <h1 className="type-heading mt-1">{event.name}</h1>
       <p className="mt-2 text-[0.95rem] text-muted-foreground">
         {count === 0
           ? "No takes yet."
@@ -79,7 +79,7 @@ export function EventTakes() {
       </p>
 
       {count > 0 && (
-        <ol className="mt-6 divide-y rounded-2xl border">
+        <ol className="mt-6 divide-y border-y">
           {event.takes.map((take, i) => (
             <TakeRow key={take.captureId} take={take} number={i + 1} status={takeStatus(take, now)} />
           ))}
@@ -109,7 +109,7 @@ export function EventTakes() {
             <Link href="/capture" className={buttonVariants({ variant: "outline", size: "touch-lg" })}>
               Review later
             </Link>
-            <p className="text-center text-sm text-muted-foreground">They wait under &ldquo;needs review&rdquo; on Capture.</p>
+            <p className="text-center text-sm text-muted-foreground">They wait under &ldquo;to review&rdquo; on Capture.</p>
           </>
         ) : (
           <Button size="touch-lg" onClick={finish}>
@@ -137,7 +137,7 @@ function TakeRow({ take, number, status }: { take: Take; number: number; status:
     <>
       <span className="w-6 shrink-0 pt-0.5 text-sm text-muted-foreground tabular-nums">{number}</span>
       <span className="min-w-0 flex-1">
-        <span className={cn("block font-medium", s.muted && "text-muted-foreground")}>{name}</span>
+        <bdi dir="auto" className={cn("block font-serif text-[1.3125rem] leading-[1.3]", s.muted && "text-muted-foreground")}>{name}</bdi>
         {known && <span className="block truncate text-sm text-muted-foreground">{takeDetail(take.draft)}</span>}
         <span
           className={cn(
@@ -155,11 +155,11 @@ function TakeRow({ take, number, status }: { take: Take; number: number; status:
   return (
     <li>
       {status === "ready" ? (
-        <Link href={`/capture/review?capture=${take.captureId}`} className="flex gap-3 px-4 py-3 transition-colors hover:bg-muted/60">
+        <Link href={`/capture/review?capture=${take.captureId}`} className="flex min-h-14.5 gap-3 py-3 transition-colors hover:bg-muted/60 active:bg-muted">
           {body}
         </Link>
       ) : (
-        <div className="flex gap-3 px-4 py-3">{body}</div>
+        <div className="flex min-h-14.5 gap-3 py-3">{body}</div>
       )}
     </li>
   );

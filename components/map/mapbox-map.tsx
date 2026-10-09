@@ -5,13 +5,14 @@ import { useEffect, useRef } from "react";
 import mapboxgl, { type GeoJSONSource, type Map as MapboxMap } from "mapbox-gl";
 import type { CameraRequest, SurfaceProps } from "@/components/map/surface";
 import { boundsAround, boundsOfRadius, circlePolygon } from "@/lib/map/geo";
-import { accentFor, MAPBOX_TOKEN, mapConfig, mapStyle, usesStandardStyle } from "@/lib/map/mapbox-style";
+import { MAPBOX_TOKEN, mapColors, mapConfig, mapStyle, usesStandardStyle } from "@/lib/map/mapbox-style";
 
 // The real map (brief 7.7): Mapbox GL with clustered pins loaded as GeoJSON
 // from /api/map. Each new map is a billed "map load", so one map is made per
 // session and moved between visits to the Map screen instead of re-created.
 
-const PEOPLE_LAYERS = ["clusters", "people"];
+// The ring counts as part of a pin, so the whole 36px circle can be tapped.
+const PEOPLE_LAYERS = ["clusters", "people", "people-ring"];
 
 type Overlay = Pick<SurfaceProps, "selectedId" | "near">;
 type Handlers = Pick<SurfaceProps, "onSelectPerson" | "onBackground">;
@@ -21,29 +22,55 @@ let handlers: Handlers | null = null;
 let overlay: Overlay = { selectedId: null, near: null };
 
 const dark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
-const accent = () => accentFor(dark());
-const ink = () => (dark() ? "#0c0c0b" : "#ffffff");
+const colors = () => mapColors(dark());
 const pinsUrl = () => new URL("/api/map", window.location.origin).href;
 const empty = { type: "FeatureCollection" as const, features: [] };
+const LABEL_FONT = ["DIN Pro Bold", "Arial Unicode MS Bold"];
+
+// Colours that follow light and dark mode, per layer and paint property.
+function themePaint(): [string, string, unknown][] {
+  const c = colors();
+  return [
+    ["near-fill", "fill-color", c.primary],
+    ["near-line", "line-color", c.primary],
+    ["clusters", "circle-color", c.primary],
+    ["clusters", "circle-stroke-color", c.background],
+    ["cluster-count", "text-color", c.onPrimary],
+    ["people-ring", "circle-color", c.background],
+    ["people", "circle-color", c.card],
+    ["people", "circle-stroke-color", c.primary],
+    ["people-initials", "text-color", c.foreground],
+    ["person-selected", "circle-color", c.primary],
+    ["person-selected", "circle-stroke-color", c.background],
+    ["person-selected-initials", "text-color", c.onPrimary],
+    ["person-selected-name", "text-color", c.background],
+    ["person-selected-name", "text-halo-color", c.foreground],
+    ["here", "circle-color", c.primary],
+    ["here", "circle-stroke-color", c.background],
+  ];
+}
 
 function addOverlays(map: MapboxMap) {
   if (map.getSource("people")) return;
+  const c = colors();
   map.addSource("people", { type: "geojson", data: pinsUrl(), cluster: true, clusterRadius: 44, clusterMaxZoom: 14 });
   map.addSource("near-area", { type: "geojson", data: empty });
   map.addSource("here", { type: "geojson", data: empty });
 
-  map.addLayer({ id: "near-fill", type: "fill", source: "near-area", paint: { "fill-color": accent(), "fill-opacity": 0.1 } });
-  map.addLayer({ id: "near-line", type: "line", source: "near-area", paint: { "line-color": accent(), "line-opacity": 0.45, "line-width": 1.5 } });
+  // Near me: primary at 7% with a 1.5px line at 55%.
+  map.addLayer({ id: "near-fill", type: "fill", source: "near-area", paint: { "fill-color": c.primary, "fill-opacity": 0.07 } });
+  map.addLayer({ id: "near-line", type: "line", source: "near-area", paint: { "line-color": c.primary, "line-opacity": 0.55, "line-width": 1.5 } });
+  // City clusters: 32 + 6·√count across, 32–64px, with a 3px ring in the background colour.
   map.addLayer({
     id: "clusters",
     type: "circle",
     source: "people",
     filter: ["has", "point_count"],
     paint: {
-      "circle-color": accent(),
-      "circle-radius": ["step", ["get", "point_count"], 16, 5, 20, 15, 26],
-      "circle-stroke-width": 2,
-      "circle-stroke-color": ink(),
+      "circle-color": c.primary,
+      "circle-radius": ["min", 32, ["+", 16, ["*", 3, ["sqrt", ["get", "point_count"]]]]],
+      "circle-stroke-width": 3,
+      "circle-stroke-color": c.background,
     },
   });
   map.addLayer({
@@ -51,22 +78,47 @@ function addOverlays(map: MapboxMap) {
     type: "symbol",
     source: "people",
     filter: ["has", "point_count"],
-    layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 13, "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"] },
-    paint: { "text-color": "#ffffff" },
+    layout: { "text-field": ["get", "point_count_abbreviated"], "text-size": 13, "text-font": LABEL_FONT },
+    paint: { "text-color": c.onPrimary },
+  });
+  // A person: 32px, card fill with initials, a 2px primary ring and a 2px ring in the background colour.
+  map.addLayer({
+    id: "people-ring",
+    type: "circle",
+    source: "people",
+    filter: ["!", ["has", "point_count"]],
+    paint: { "circle-color": c.background, "circle-radius": 18 },
   });
   map.addLayer({
     id: "people",
     type: "circle",
     source: "people",
     filter: ["!", ["has", "point_count"]],
-    paint: { "circle-color": accent(), "circle-radius": 7, "circle-stroke-width": 2.5, "circle-stroke-color": ink() },
+    paint: { "circle-color": c.card, "circle-radius": 14, "circle-stroke-width": 2, "circle-stroke-color": c.primary },
   });
+  map.addLayer({
+    id: "people-initials",
+    type: "symbol",
+    source: "people",
+    filter: ["!", ["has", "point_count"]],
+    layout: { "text-field": ["get", "initials"], "text-size": 11, "text-font": LABEL_FONT, "text-allow-overlap": true },
+    paint: { "text-color": c.foreground },
+  });
+  // The chosen person: 44px in primary, with the name above.
   map.addLayer({
     id: "person-selected",
     type: "circle",
     source: "people",
     filter: ["==", ["get", "id"], ""],
-    paint: { "circle-color": accent(), "circle-radius": 11, "circle-stroke-width": 3, "circle-stroke-color": ink() },
+    paint: { "circle-color": c.primary, "circle-radius": 22, "circle-stroke-width": 2, "circle-stroke-color": c.background },
+  });
+  map.addLayer({
+    id: "person-selected-initials",
+    type: "symbol",
+    source: "people",
+    filter: ["==", ["get", "id"], ""],
+    layout: { "text-field": ["get", "initials"], "text-size": 13, "text-font": LABEL_FONT, "text-allow-overlap": true },
+    paint: { "text-color": c.onPrimary },
   });
   map.addLayer({
     id: "person-selected-name",
@@ -76,17 +128,19 @@ function addOverlays(map: MapboxMap) {
     layout: {
       "text-field": ["get", "name"],
       "text-size": 13,
-      "text-offset": [0, -1.6],
+      "text-offset": [0, -2.4],
       "text-anchor": "bottom",
-      "text-font": ["DIN Pro Medium", "Arial Unicode MS Bold"],
+      "text-font": LABEL_FONT,
+      "text-allow-overlap": true,
     },
-    paint: { "text-color": dark() ? "#ffffff" : "#17201d", "text-halo-color": ink(), "text-halo-width": 1.5 },
+    paint: { "text-color": c.background, "text-halo-color": c.foreground, "text-halo-width": 4 },
   });
+  // You: a 14px dot.
   map.addLayer({
     id: "here",
     type: "circle",
     source: "here",
-    paint: { "circle-color": dark() ? "#ffffff" : "#17201d", "circle-radius": 6, "circle-stroke-width": 3, "circle-stroke-color": ink() },
+    paint: { "circle-color": c.primary, "circle-radius": 7, "circle-stroke-width": 3, "circle-stroke-color": c.background },
   });
   applyOverlay(map);
 }
@@ -95,6 +149,7 @@ function applyOverlay(map: MapboxMap) {
   if (!map.getSource("people")) return;
   const id = overlay.selectedId ?? "";
   map.setFilter("person-selected", ["==", ["get", "id"], id]);
+  map.setFilter("person-selected-initials", ["==", ["get", "id"], id]);
   map.setFilter("person-selected-name", ["==", ["get", "id"], id]);
   const near = overlay.near;
   (map.getSource("near-area") as GeoJSONSource).setData(
@@ -143,10 +198,12 @@ function createMap() {
       if (!error && zoom != null) map.easeTo({ center, zoom });
     });
   });
-  map.on("click", "people", (e) => {
-    const id = e.features?.[0]?.properties?.id;
-    if (typeof id === "string") handlers?.onSelectPerson(id);
-  });
+  for (const layer of ["people", "people-ring"]) {
+    map.on("click", layer, (e) => {
+      const id = e.features?.[0]?.properties?.id;
+      if (typeof id === "string") handlers?.onSelectPerson(id);
+    });
+  }
   map.on("click", (e) => {
     if (!map.queryRenderedFeatures(e.point, { layers: PEOPLE_LAYERS }).length) handlers?.onBackground();
   });
@@ -159,12 +216,7 @@ function createMap() {
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (usesStandardStyle) map.setConfigProperty("basemap", "lightPreset", dark() ? "night" : "day");
     if (!map.getSource("people")) return;
-    for (const layer of ["clusters", "people", "person-selected"]) {
-      map.setPaintProperty(layer, "circle-color", accent());
-      map.setPaintProperty(layer, "circle-stroke-color", ink());
-    }
-    map.setPaintProperty("near-fill", "fill-color", accent());
-    map.setPaintProperty("near-line", "line-color", accent());
+    for (const [layer, property, value] of themePaint()) map.setPaintProperty(layer, property as never, value as never);
   });
 
   if (process.env.NODE_ENV !== "production") (window as unknown as { __kingMap?: MapboxMap }).__kingMap = map;

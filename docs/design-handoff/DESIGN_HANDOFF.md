@@ -225,27 +225,26 @@ Plain, brief, warm without being cute. Second person ("Who did you just meet?").
 
 ## 9. Current design tokens (for reference)
 
-Defined in `app/globals.css`; brand values in `lib/config.ts`.
+Applied on 9 Oct 2026 from the theme handoff (`theme-handoff.dc.html` in this folder): **Daylight Book** in light mode and **Little Black Book** in dark, switched by the phone's setting. Defined in `app/globals.css`; primary and background in `lib/config.ts`.
 
 | Role | Light | Dark |
 |---|---|---|
-| Background | `#fafaf9` | `#0c0c0b` |
-| Foreground | `oklch(0.145 0.004 170)` | `oklch(0.985 0.004 170)` |
-| Primary (accent) | `#1f6f5c` | `#5fbfa4` |
-| Muted surface | `oklch(0.97 0.004 170)` | `oklch(0.269 0.004 170)` |
-| Muted text | `oklch(0.49 0.006 170)` | `oklch(0.708 0.004 170)` |
-| Border | `oklch(0.922 0.004 170)` | `oklch(1 0 0 / 10%)` |
-| Destructive | `oklch(0.577 0.245 27.3)` | `oklch(0.704 0.191 22.2)` |
-| Warning (low-confidence name) | Tailwind amber-500/700 | amber-400/300 |
-| Map water | primary 7% mixed into muted | same |
+| Background | `#f6f1e6` ivory | `#0f1412` near-black |
+| Foreground | `#1d2a24` | `#efe7d6` |
+| Card / popover | `#fffaf0` | `#16201c` / `#1a2621` |
+| Primary | `#1f4d3d` deep green | `#c9a96a` gold |
+| Muted surface / text | `#ece4d2` / `#5b5d52` | `#151d1a` / `#a39c8c` |
+| Accent (chips, banners) | `#e2ebe3` | `#17322a` |
+| Border / input border | `#dcd1bb` / `#8a7f65` | `#2f3229` / `#6e6650` |
+| Destructive | `#a8321f` | `#ff8a7a` |
+| Warning | `#7f520e` | `#e8c26a` |
+| Success | `#2a6a4b` | `#86d0a6` |
+| Brand gold (mic only on ivory) | `#b48f4c` | `#c9a96a` |
+| Recording | `#c13d29` | `#ef5b45` |
 
-- Neutrals are tinted very slightly toward the accent hue (170).
-- Radius base 0.625 rem; inputs and buttons 12 px (`rounded-xl`); panels and cards 16–24 px.
-- Type: system UI font. Names 26–40 px semibold, tight tracking. Body 15–17 px. Labels 14 px muted. No fixed scale yet; please propose one (ratio ~1.125–1.2).
-- Touch sizes: buttons 44 px (`touch`) and 48 px (`touch-lg`), icon buttons 44 px.
-- Motion: 150–250 ms for state changes, map flights 700 ms ease-out-quart; reduced motion turns animations off.
-
-Please return token changes as a table like the one above (OKLCH preferred) so they map onto the same role names.
+- Type: DM Serif Display (headings in italic, people's names upright) and DM Sans, with Noto Naskh/Sans Arabic and Noto Serif/Sans Thai behind them. Arabic and Thai never slant.
+- Radius 12px base: buttons and fields 14px, strips 16px, cards 20px, sheets 28px. Buttons 52px (44px compact).
+- Motion: 120ms press (scale 0.97), 200ms state changes, 280ms sheets, a 1.4s recording halo; reduced motion turns them off.
 
 ## 10. Out of scope (don't design)
 

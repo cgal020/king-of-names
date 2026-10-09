@@ -47,7 +47,6 @@ export function MyCard({ initial }: { initial: Me }) {
         type={type}
         value={me[key]}
         onChange={(e) => setMe((m) => ({ ...m, [key]: e.target.value }))}
-        className="h-11 rounded-xl px-3.5"
       />
     </label>
   );

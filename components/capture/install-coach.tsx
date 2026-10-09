@@ -64,10 +64,10 @@ export function InstallCoach() {
   const action = "h-9 shrink-0 rounded-lg px-2 text-sm font-medium text-primary";
 
   return (
-    <div className="mt-1 mb-2 flex items-center gap-1 rounded-2xl bg-primary/8 py-2 pr-1 pl-4">
+    <div className="mt-1 flex items-center gap-1 rounded-2xl bg-accent py-2 pr-1 pl-3.5 text-accent-foreground">
       <span className="min-w-0 flex-1 py-1">
-        <span className="block text-sm font-medium">Add {appConfig.name} to your Home Screen</span>
-        <span className="block text-sm text-muted-foreground">Opens in one tap and keeps notes safe with no signal.</span>
+        <span className="block text-[0.9375rem] font-semibold">Add {appConfig.name} to your Home Screen</span>
+        <span className="block text-sm">Opens in one tap and keeps notes safe with no signal.</span>
       </span>
       {platform === "android" && prompt ? (
         <button
@@ -128,15 +128,15 @@ function InstallSteps({ platform, onClose }: { platform: "ios" | "android"; onCl
         ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-end bg-scrim animate-in fade-in-0 duration-200 sm:items-center sm:justify-center" role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="install-steps-title"
-        className="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-background px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
+        className="max-h-[90dvh] w-full overflow-y-auto sheet rounded-t-4xl bg-popover px-5 pt-5 text-popover-foreground shadow-sheet animate-in slide-in-from-bottom duration-280 ease-out pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
       >
         <SmartphoneIcon className="size-7 text-primary" aria-hidden />
-        <h2 id="install-steps-title" className="mt-3 text-2xl font-semibold tracking-tight">
+        <h2 id="install-steps-title" className="mt-3 type-sheet-title">
           Add {appConfig.name} to your Home Screen
         </h2>
         <p className="mt-2 text-[0.95rem] text-muted-foreground">

@@ -11,21 +11,18 @@ import { defaultEventName, type EventSession } from "@/lib/events/event";
 export function EventBanner({ event, onEnd }: { event: EventSession; onEnd: () => void }) {
   const count = event.takes.length;
   return (
-    <div className="mt-1 mb-2 flex items-center gap-3 rounded-2xl bg-primary px-4 py-3 text-primary-foreground">
-      <span className="relative flex size-2.5 shrink-0" aria-hidden>
-        <span className="absolute inline-flex size-full animate-ping rounded-full bg-primary-foreground/70 motion-reduce:animate-none" />
-        <span className="relative inline-flex size-2.5 rounded-full bg-primary-foreground" />
-      </span>
+    <div className="mt-1 flex items-center gap-3 rounded-2xl bg-accent py-2.5 pr-2 pl-4 text-accent-foreground">
+      <span className="size-2 shrink-0 animate-blink rounded-full bg-primary" aria-hidden />
       <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">Event mode &middot; {event.name}</span>
-        <span className="block text-sm opacity-85">
+        <span className="block truncate text-xs font-semibold tracking-[0.14em] uppercase">Event mode &middot; {event.name}</span>
+        <span className="block text-sm">
           {count === 0 ? "Each tap of the mic saves a quick take." : `${count} ${count === 1 ? "take" : "takes"} saved. Review them when it’s over.`}
         </span>
       </span>
       <button
         type="button"
         onClick={onEnd}
-        className="h-9 shrink-0 rounded-lg border border-primary-foreground/40 px-3 text-sm font-medium"
+        className="h-11 shrink-0 rounded-xl px-3 text-[0.9375rem] font-semibold underline underline-offset-3"
       >
         End
       </button>
@@ -37,22 +34,22 @@ export function StartEventSheet({ onStart, onCancel }: { onStart: (name: string)
   const [name, setName] = useState(() => defaultEventName());
   const inputId = useId();
   return (
-    <div className="fixed inset-0 z-50 flex items-end bg-black/40 sm:items-center sm:justify-center" role="presentation">
+    <div className="fixed inset-0 z-50 flex items-end bg-scrim animate-in fade-in-0 duration-200 sm:items-center sm:justify-center" role="presentation">
       <form
         role="dialog"
         aria-modal="true"
         aria-labelledby="event-sheet-title"
-        className="max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl bg-background px-5 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
+        className="max-h-[90dvh] w-full overflow-y-auto sheet rounded-t-4xl bg-popover px-5 pt-5 text-popover-foreground shadow-sheet animate-in slide-in-from-bottom duration-280 ease-out pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:max-w-md sm:rounded-3xl"
         onSubmit={(e) => {
           e.preventDefault();
           onStart(name.trim() || defaultEventName());
         }}
       >
         <PartyPopperIcon className="size-7 text-primary" aria-hidden />
-        <h2 id="event-sheet-title" className="mt-3 text-2xl font-semibold tracking-tight">
+        <h2 id="event-sheet-title" className="mt-3 type-sheet-title">
           Going somewhere busy?
         </h2>
-        <p className="mt-2 text-[0.95rem] text-muted-foreground">
+        <p className="mt-2 text-[0.9375rem] leading-[1.45] text-muted-foreground">
           In event mode, each tap of the mic saves a quick take. Say their name and one thing to remember, then
           move on. When the event is over, you review them all at once.
         </p>
@@ -63,7 +60,7 @@ export function StartEventSheet({ onStart, onCancel }: { onStart: (name: string)
           id={inputId}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="mt-2 h-12 text-base"
+          className="mt-2"
           maxLength={80}
           autoComplete="off"
         />

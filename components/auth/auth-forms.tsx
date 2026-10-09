@@ -33,7 +33,7 @@ function Field({ name, label, hint, error, className, type, ...input }: FieldPro
           type={password && shown ? "text" : type}
           aria-invalid={Boolean(error)}
           aria-describedby={described}
-          className={cn("h-12 rounded-xl px-3 text-base", password && "pr-12", className)}
+          className={cn(password && "pr-12", className)}
           {...input}
         />
         {password && (

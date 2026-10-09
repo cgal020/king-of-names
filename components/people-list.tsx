@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronDownIcon, MicIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, MicIcon, SearchIcon, SparklesIcon, XIcon } from "lucide-react";
 import { useAskStore } from "@/components/ask/ask-store";
 import { ComingUp } from "@/components/coming-up";
 import { PersonAvatar } from "@/components/photos/person-avatar";
@@ -114,7 +114,7 @@ export function PeopleList({ people }: { people: Person[] }) {
             }}
             placeholder="Search names, notes, places, tags"
             aria-label="Search people"
-            className="h-11 w-full rounded-xl bg-muted pr-10 pl-10 text-base outline-none placeholder:text-muted-foreground focus-visible:ring-3 focus-visible:ring-ring/40 [&::-webkit-search-cancel-button]:hidden"
+            className="h-12 w-full rounded-xl bg-muted pr-10 pl-10 text-[1.0625rem] outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-search-cancel-button]:hidden"
           />
           {query && (
             <button
@@ -166,7 +166,7 @@ export function PeopleList({ people }: { people: Person[] }) {
       {results.length > 0
         ? groups.map(([month, list]) => (
             <section key={month} className="mt-3">
-              <h2 className="pt-3 pb-1 text-sm font-medium text-muted-foreground">{month}</h2>
+              <h2 className="type-section pt-4 pb-1">{month}</h2>
               <ul className="divide-y">
                 {list.map((p) => (
                   <li key={p.id}>
@@ -192,7 +192,7 @@ export function PeopleList({ people }: { people: Person[] }) {
                     setType("");
                     setTag("");
                   }}
-                  className="mt-4 h-11 rounded-xl px-4 text-[0.95rem] font-medium text-primary"
+                  className="mt-4 h-11 rounded-xl px-4 text-[0.9375rem] font-semibold text-primary"
                 >
                   Clear search and filters
                 </button>
@@ -208,11 +208,11 @@ function AskRow({ question, onAsk }: { question: string; onAsk: () => void }) {
     <button
       type="button"
       onClick={onAsk}
-      className="mt-2 flex w-full items-center gap-3 rounded-2xl bg-primary/8 px-4 py-3 text-left transition-colors hover:bg-primary/12"
+      className="mt-2 flex min-h-14 w-full items-center gap-3 rounded-2xl bg-accent px-3.5 py-3 text-left text-accent-foreground transition-transform duration-120 active:scale-[0.98]"
     >
-      <SparklesIcon className="size-5 shrink-0 text-primary" aria-hidden />
+      <SparklesIcon className="size-5 shrink-0" aria-hidden />
       <span className="min-w-0">
-        <span className="block text-[0.95rem] font-medium text-primary">Ask AI</span>
+        <span className="block text-[0.9375rem] font-semibold">Ask AI</span>
         <span className="block truncate text-sm text-muted-foreground">{question}</span>
       </span>
     </button>
@@ -224,16 +224,21 @@ function PersonRow({ person: p }: { person: Person }) {
   return (
     <Link
       href={`/people/${p.id}`}
-      className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
+      className="-mx-2 flex min-h-17 items-center gap-3 rounded-xl px-2 py-2.5 outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset active:bg-muted"
     >
-      <PersonAvatar personId={p.id} name={p.full_name} />
+      <PersonAvatar personId={p.id} name={p.full_name} size={36} />
       <span className="min-w-0 flex-1">
-        <span className="flex items-baseline justify-between gap-3">
-          <span className="truncate text-lg font-semibold tracking-tight">{p.full_name}</span>
-          <span className="shrink-0 text-sm text-muted-foreground">{formatMetDate(p.met_at, p.met_timezone)}</span>
+        <span className="flex items-baseline justify-between gap-2">
+          {/* The name always leads; it wraps rather than truncates at large text sizes. */}
+          <bdi dir="auto" className="type-name-list line-clamp-2 min-w-0 flex-1">
+            {p.full_name}
+          </bdi>
+          <span className="shrink-0 text-[0.8125rem] text-muted-foreground">{formatMetDate(p.met_at, p.met_timezone)}</span>
         </span>
-        <span className="mt-0.5 block truncate text-[0.95rem] text-muted-foreground">
-          {[p.city, note].filter(Boolean).join(" \u00b7 ")}
+        <span className="block truncate text-sm text-muted-foreground">
+          {p.city && <span className="text-foreground">{p.city}</span>}
+          {p.city && note && " \u00b7 "}
+          {note}
         </span>
       </span>
     </Link>
@@ -260,10 +265,11 @@ function FilterChip({
   return (
     <label
       className={cn(
-        "relative flex h-9 shrink-0 items-center gap-1 rounded-full border px-3.5 text-sm font-medium transition-colors",
-        active ? "border-primary bg-primary/10 text-primary" : "text-muted-foreground",
+        "relative flex h-9 shrink-0 items-center gap-1 rounded-full border px-3.5 text-[0.9375rem] transition-colors focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 focus-within:ring-offset-background",
+        active ? "border-primary bg-accent font-medium text-accent-foreground" : "border-border text-foreground",
       )}
     >
+      {active && <CheckIcon className="size-3.5" strokeWidth={2.5} aria-hidden />}
       {active ? optionLabel(value) : label}
       <ChevronDownIcon className="size-3.5" aria-hidden />
       <select

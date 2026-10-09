@@ -1,24 +1,43 @@
-// Renders the app icons from one SVG, in the accent colour from lib/config.ts.
-// Re-run after changing the accent: npm run icons
+// Renders the app icons: the gold crown on deep green "leather", from the
+// theme handoff. No name or letters, so it reads as nothing in particular on a
+// lock screen. One icon serves light and dark.
+// Re-run after changing the icon: npm run icons
 import { mkdir, writeFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
-import { appConfig } from "../lib/config.ts";
 
-const accent = appConfig.accent.light;
-const paper = appConfig.background.light;
+const LEATHER_LIGHT = "#1f4d3d";
+const LEATHER_DARK = "#10221c";
+const GOLD_LIGHT = "#e3c891";
+const GOLD_DARK = "#b48f4c";
 
-// A map pin with a dot: where you met someone.
-const glyph = `
-  <path d="M50 18c-14.4 0-26 11.3-26 25.6C24 62 50 82 50 82s26-20 26-38.4C76 29.3 64.4 18 50 18z" fill="${paper}"/>
-  <circle cx="50" cy="44" r="10" fill="${accent}"/>`;
+// Drawn on a 512 grid. The crown sits inside the 80% safe circle, so the
+// same drawing works full bleed (Apple, maskable) and with rounded corners.
+const crown = `
+  <path d="M166 312 L178 206 L222 250 L256 182 L290 250 L334 206 L346 312 Z" fill="none" stroke="url(#gold)" stroke-width="16" stroke-linejoin="round"/>
+  <path d="M174 340 H338" stroke="url(#gold)" stroke-width="16" stroke-linecap="round"/>`;
 
-// Rounded for "any" use; full-bleed with a smaller glyph for maskable and
-// Apple icons, which the OS crops itself.
 const svg = (variant: "rounded" | "full") => `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" rx="${variant === "rounded" ? 22 : 0}" fill="${accent}"/>
-  ${variant === "full" ? `<g transform="translate(50 50) scale(0.74) translate(-50 -50)">${glyph}</g>` : glyph}
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="leather" cx="50%" cy="85%" r="80%">
+      <stop offset="0" stop-color="${LEATHER_LIGHT}"/>
+      <stop offset="1" stop-color="${LEATHER_DARK}"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="${GOLD_LIGHT}"/>
+      <stop offset="1" stop-color="${GOLD_DARK}"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="${variant === "rounded" ? 112 : 0}" fill="url(#leather)"/>
+  ${crown}
 </svg>`;
+
+// The browser-tab icon: just the crown, green on light tabs and gold on dark.
+const favicon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>path { stroke: #1f4d3d } @media (prefers-color-scheme: dark) { path { stroke: #c9a96a } }</style>
+  <path d="M6 23 L7.5 10 L12.5 15 L16 8 L19.5 15 L24.5 10 L26 23 Z" fill="none" stroke-width="2.4" stroke-linejoin="round"/>
+</svg>
+`;
 
 const outputs = [
   { file: "public/icons/icon-192.png", size: 192, variant: "rounded" },
@@ -28,7 +47,7 @@ const outputs = [
 ] as const;
 
 await mkdir("public/icons", { recursive: true });
-await writeFile("app/icon.svg", svg("rounded").trim() + "\n");
+await writeFile("app/icon.svg", favicon);
 
 const browser = await chromium.launch({ channel: "chrome" });
 const page = await browser.newPage();

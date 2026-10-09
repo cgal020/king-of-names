@@ -2,9 +2,10 @@
 // camera move should show. Pure, so the stand-in map and Mapbox share them.
 import type { Feature, FeatureCollection, Point, Polygon } from "geojson";
 import type { Person } from "@/lib/types";
+import { initials } from "@/lib/initials";
 
 export type LatLng = { lat: number; lng: number };
-export type PinProperties = { id: string; name: string; met_at: string; city: string | null };
+export type PinProperties = { id: string; name: string; initials: string; met_at: string; city: string | null };
 export type PinCollection = FeatureCollection<Point, PinProperties>;
 
 // Only what a pin and its card need, so the map endpoint never sends notes.
@@ -17,7 +18,7 @@ export function peopleToGeoJson(people: Person[]): PinCollection {
         type: "Feature",
         id: p.id,
         geometry: { type: "Point", coordinates: [p.lng!, p.lat!] },
-        properties: { id: p.id, name: p.full_name, met_at: p.met_at, city: p.city },
+        properties: { id: p.id, name: p.full_name, initials: initials(p.full_name), met_at: p.met_at, city: p.city },
       })),
   };
 }

@@ -25,9 +25,10 @@ import { useRecording } from "@/components/capture/recording-store";
 import { usePlaceName } from "@/components/capture/use-place-name";
 import { usePhotoPicker } from "@/components/photos/photo-picker";
 import { usePhotosFor } from "@/components/photos/photo-store";
+import { setRecordingChrome } from "@/components/tab-bar";
 import { buttonVariants } from "@/components/ui/button";
+import { Wordmark } from "@/components/wordmark";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
-import { appConfig } from "@/lib/config";
 import { formatDistance, formatDuration } from "@/lib/format";
 import { describeWait } from "@/lib/captures/rate-limit";
 import { isLive, openTakes, type EventSession } from "@/lib/events/event";
@@ -47,7 +48,7 @@ const LIMIT_TITLE = "That’s 60 notes in the last hour";
 const limitDetail = (seconds: number) => `This one is saved on your phone and goes in ${describeWait(seconds)}.`;
 
 const secondaryAction =
-  "flex h-11 items-center gap-2 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:text-foreground";
+  "flex h-11 items-center gap-2 rounded-xl px-3 text-[0.9375rem] font-semibold text-primary transition-[transform,background-color] duration-120 hover:bg-muted active:scale-[0.97] active:bg-muted";
 
 type Phase = "idle" | "recording" | "processing";
 type LocationState = { state: "idle" } | LocationStatus;
@@ -93,6 +94,12 @@ export function CaptureScreen() {
     // finish only uses stable setters and the queue's stable callbacks.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, live]);
+
+  // The tab bar steps aside while recording, so nothing competes with Stop.
+  useEffect(() => {
+    setRecordingChrome(phase === "recording");
+    return () => setRecordingChrome(false);
+  }, [phase]);
 
   // Walk through the pipeline steps, then open the review screen.
   useEffect(() => {
@@ -249,7 +256,7 @@ export function CaptureScreen() {
   return (
     <main className="mx-auto flex min-h-[calc(100dvh-var(--tabbar-h)-1.5rem)] max-w-xl flex-col px-5">
       <header className="flex min-h-14 items-center justify-between pt-[env(safe-area-inset-top)]">
-        <span className="font-semibold tracking-tight">{appConfig.name}</span>
+        <Wordmark />
         <Link
           href="/settings"
           aria-label="Settings"
@@ -272,10 +279,10 @@ export function CaptureScreen() {
           <ProcessingSteps step={step} />
         ) : (
           <>
-            <h1 className="text-[2rem] leading-tight font-semibold tracking-tight [@media(max-height:720px)]:text-[1.75rem]">
+            <h1 className="type-display [@media(max-height:720px)]:text-[2.25rem]">
               {phase === "recording" ? "Listening…" : eventLive ? "Who’s next?" : "Who did you just meet?"}
             </h1>
-            <p className="mt-2 max-w-[34ch] text-[0.95rem] text-muted-foreground">
+            <p className="mt-3 max-w-[34ch] text-[1.0625rem] leading-relaxed text-muted-foreground">
               {eventLive
                 ? "Say their name and one thing to remember."
                 : "Say their name, where you are, and anything worth remembering."}
@@ -286,11 +293,12 @@ export function CaptureScreen() {
       </section>
 
       <section className="flex flex-col items-center pb-6">
-        <div aria-live="polite" className="mb-3 h-6 text-center">
+        <div aria-live="polite" className="mb-2 flex h-8 items-center justify-center">
           {phase === "recording" && (
-            <span className="text-lg font-medium tabular-nums">
-              {formatDuration(elapsed)}
-              <span className="text-muted-foreground"> / {formatDuration(MAX_SECONDS)}</span>
+            <span className="flex items-center gap-2 rounded-full bg-destructive-soft py-1.5 pr-3 pl-2.5 text-sm font-semibold text-destructive tabular-nums">
+              <span className="size-[9px] animate-blink rounded-full bg-recording" aria-hidden />
+              Recording &middot; {formatDuration(elapsed)}
+              <span className="sr-only"> of {formatDuration(MAX_SECONDS)}</span>
             </span>
           )}
         </div>
@@ -299,7 +307,7 @@ export function CaptureScreen() {
         <div className="grid w-full grid-cols-[1fr_auto_1fr] items-center">
           <div className="flex justify-center">
             {phase === "idle" && (
-              <SideAction href="/capture/card" label="Card" icon={<ScanLineIcon />} />
+              <SideAction href="/capture/card" label="Scan card" icon={<ScanLineIcon />} />
             )}
           </div>
           <RecordButton
@@ -376,10 +384,11 @@ function SideAction({
   href?: string;
   onClick?: () => void;
 }) {
+  // The whole 80x80 column is the tap target.
   const className =
-    "flex flex-col items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground";
+    "group/side flex size-20 flex-col items-center justify-center gap-1.5 rounded-2xl text-[0.8125rem] text-muted-foreground outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring";
   const circle = (
-    <span className="grid size-14 place-items-center rounded-full border bg-background shadow-xs transition-transform duration-150 active:scale-95 [&_svg]:size-5.5">
+    <span className="grid size-13 place-items-center rounded-full bg-card text-foreground shadow-[inset_0_0_0_1px_var(--border)] transition-[transform,background-color] duration-120 group-active/side:scale-[0.96] group-active/side:bg-muted [&_svg]:size-5.5 [&_svg]:stroke-[1.8]">
       {icon}
     </span>
   );
@@ -420,12 +429,12 @@ function NeedsReview({ event }: { event: EventSession | null }) {
   return (
     <Link
       href={fromEvent ? "/capture/event" : "/capture/review"}
-      className="mt-1 flex items-center gap-3 rounded-2xl bg-muted px-4 py-3 transition-colors hover:bg-muted/70"
+      className="mt-2.5 flex min-h-14 items-center gap-3 rounded-2xl bg-muted px-3.5 py-3 transition-transform duration-120 active:scale-[0.98]"
     >
       <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">
-          {fromEvent ? `${takes.length} ${takes.length === 1 ? "note needs" : "notes need"} review` : "1 note needs review"}
+        <span className="block text-[0.9375rem] font-semibold">
+          {fromEvent ? `${takes.length} ${takes.length === 1 ? "note" : "notes"} to review` : "1 note to review"}
         </span>
         <span className="block truncate text-sm text-muted-foreground">
           {fromEvent ? `From ${event.name}` : mockPendingReview.preview}
@@ -439,7 +448,7 @@ function NeedsReview({ event }: { event: EventSession | null }) {
 function LocationChip({ location, placeName }: { location: LocationState; placeName: string | null }) {
   if (location.state === "denied" || location.state === "unavailable") {
     return (
-      <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <span className="flex min-h-8 items-center gap-1.5 text-sm font-medium text-warning">
         <MapPinOffIcon className="size-4" aria-hidden />
         {location.state === "denied" ? "Location is off." : "No location yet."} You can set the city next.
       </span>
@@ -447,15 +456,19 @@ function LocationChip({ location, placeName }: { location: LocationState; placeN
   }
   const fix = location.state === "found" ? location.fix : null;
   return (
-    <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-      <MapPinIcon className={cn("size-4", fix ? "text-primary" : "animate-pulse")} aria-hidden />
+    <span className="flex min-h-8 items-center gap-1.5 text-sm text-muted-foreground">
+      {fix ? (
+        <MapPinIcon className="size-4 text-primary" aria-hidden />
+      ) : (
+        <span className="size-3.5 animate-spin rounded-full border-2 border-border border-t-primary" aria-hidden />
+      )}
       {fix ? (
         <>
           <span className="font-medium text-foreground">{placeName ?? "Location saved"}</span>
           <span>&middot; within {formatDistance(fix.accuracyM / 1000)}</span>
         </>
       ) : (
-        "Finding your location…"
+        "Finding where you are…"
       )}
     </span>
   );
@@ -464,7 +477,7 @@ function LocationChip({ location, placeName }: { location: LocationState; placeN
 function ProcessingSteps({ step }: { step: number }) {
   return (
     <div>
-      <h1 className="text-[2rem] leading-tight font-semibold tracking-tight">Got it.</h1>
+      <h1 className="type-display">Got it.</h1>
       <ol className="mt-5 space-y-3" aria-live="polite">
         {STEPS.map((label, i) => {
           const done = i < step;

@@ -8,8 +8,8 @@ export default async function ForgotPasswordPage({ searchParams }: PageProps<"/f
   const { expired } = await searchParams;
   return (
     <>
-      <h1 className="text-[2rem] leading-tight font-semibold tracking-tight">Reset your password</h1>
-      <p className="mt-2 mb-8 text-[0.95rem] text-muted-foreground">
+      <h1 className="type-heading">Reset your password</h1>
+      <p className="mt-3 mb-8 text-[1.0625rem] leading-relaxed text-muted-foreground">
         We&rsquo;ll email you a link to choose a new one.
       </p>
       <ForgotPasswordForm expired={Boolean(expired)} />

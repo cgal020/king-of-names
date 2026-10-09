@@ -25,17 +25,28 @@ const Toaster = ({ ...props }: ToasterProps) => {
           <Loader2Icon className="size-4 animate-spin" />
         ),
       }}
+      // Inverted (foreground on background), radius 14, 14px above the tab bar.
+      position="bottom-center"
+      offset={{ bottom: "calc(var(--tabbar-h) + 14px)" }}
+      mobileOffset={{ bottom: "calc(var(--tabbar-h) + 14px)" }}
+      duration={4000}
       style={
         {
-          "--normal-bg": "var(--popover)",
-          "--normal-text": "var(--popover-foreground)",
-          "--normal-border": "var(--border)",
-          "--border-radius": "var(--radius)",
+          "--normal-bg": "var(--foreground)",
+          "--normal-text": "var(--background)",
+          "--normal-border": "transparent",
+          "--border-radius": "14px",
+          "--success-bg": "var(--foreground)",
+          "--success-text": "var(--background)",
+          "--error-bg": "var(--foreground)",
+          "--error-text": "var(--background)",
         } as React.CSSProperties
       }
       toastOptions={{
         classNames: {
-          toast: "cn-toast",
+          toast: "cn-toast !text-[0.9375rem] !shadow-card",
+          description: "!text-[color-mix(in_oklab,var(--background)_78%,var(--foreground))]",
+          actionButton: "!bg-transparent !font-semibold !text-(--background) !underline !underline-offset-3",
         },
       }}
       {...props}

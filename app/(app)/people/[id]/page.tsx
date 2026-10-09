@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BellIcon, PhoneIcon } from "lucide-react";
+import { BellIcon, CalendarIcon, PhoneIcon } from "lucide-react";
 import { DeletePersonButton } from "@/components/delete-person-button";
 import { MiniMap } from "@/components/map/mini-map";
 import { MeetingTimeline } from "@/components/meeting-timeline";
@@ -47,10 +47,18 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       />
 
       <header className="mt-3">
-        <PersonAvatar personId={p.id} name={p.full_name} size={72} className="mb-4 text-xl" />
-        <h1 className="text-[2.5rem] leading-[1.1] font-semibold tracking-tight">{p.full_name}</h1>
-        {work && <p className="mt-2 text-lg">{work}</p>}
-        <p className="mt-1 text-[0.95rem] text-muted-foreground">
+        <div className="flex items-center gap-3.5">
+          <PersonAvatar personId={p.id} name={p.full_name} size={56} />
+          <TagList relationship={p.relationship} tags={p.tags} />
+        </div>
+        {/* The name is the largest text on the screen. */}
+        <h1 className="type-name mt-3.5">
+          <bdi dir="auto">{p.full_name}</bdi>
+        </h1>
+        {work && <p className="mt-1.5 text-[1.0625rem]">{work}</p>}
+        <p className="mt-2 flex gap-1.5 text-[0.9375rem] text-muted-foreground">
+          <CalendarIcon className="mt-[3px] size-4 shrink-0" aria-hidden />
+          <span>
           {meetings.length > 1 ? (
             <>
               Last met {formatMetDate(latest.met_at, latest.met_timezone)}
@@ -62,28 +70,32 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
               {place && <> &middot; {place}</>}
             </>
           )}
+          </span>
         </p>
-        <TagList relationship={p.relationship} tags={p.tags} className="mt-3" />
       </header>
 
-      <div className="mt-6 grid gap-2">
+      <div className={cn("mt-5 grid gap-2", p.phone ? "grid-cols-2" : "grid-cols-1")}>
         {p.phone && (
           <a
             href={`tel:${p.phone.replace(/[^\d+]/g, "")}`}
-            className={cn(buttonVariants({ variant: "outline", size: "touch-lg" }), "w-full justify-start")}
+            aria-label={`Call ${p.phone}`}
+            className={cn(
+              buttonVariants({ variant: "ghost" }),
+              "h-16 flex-col gap-1 rounded-xl bg-muted text-[0.8125rem] text-primary [&_svg:not([class*='size-'])]:size-4.5",
+            )}
           >
-            <PhoneIcon aria-hidden className="text-primary" />
-            <span className="tabular-nums">{p.phone}</span>
+            <PhoneIcon aria-hidden strokeWidth={1.9} />
+            Call
           </a>
         )}
-        <SaveContactButton person={p} className="w-full" />
+        <SaveContactButton person={p} />
       </div>
 
       {(p.follow_up_note || p.follow_up_date) && (
-        <div className="mt-4 flex gap-3 rounded-2xl bg-primary/8 p-4">
-          <BellIcon className="mt-0.5 size-4.5 shrink-0 text-primary" aria-hidden />
+        <div className="mt-4 flex gap-3 rounded-2xl bg-accent p-4 text-accent-foreground">
+          <BellIcon className="mt-0.5 size-4.5 shrink-0" aria-hidden />
           <div>
-            <p className="text-sm font-medium text-primary">
+            <p className="text-sm font-semibold">
               Follow up{p.follow_up_date && <> &middot; {formatShortDate(p.follow_up_date)}</>}
             </p>
             {p.follow_up_note && <p className="mt-0.5 text-[0.95rem]">{p.follow_up_note}</p>}
@@ -93,13 +105,13 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
 
       {p.notes && (
         <section className="mt-8">
-          <h2 className="mb-2 text-sm font-medium text-muted-foreground">Notes</h2>
+          <h2 className="type-section mb-2">Notes</h2>
           <p className="max-w-[65ch] text-[1.0625rem] leading-relaxed text-pretty">{p.notes}</p>
         </section>
       )}
 
       <section className="mt-8">
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Photos</h2>
+        <h2 className="type-section mb-2">Photos</h2>
         <PersonPhotos personId={p.id} />
       </section>
 
@@ -123,7 +135,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
       )}
 
       <section className="mt-8">
-        <h2 className="mb-2 text-sm font-medium text-muted-foreground">Where you met</h2>
+        <h2 className="type-section mb-2">Where you met</h2>
         <MiniMap lat={p.lat} lng={p.lng} />
         <p className="mt-2 text-sm text-muted-foreground">
           {p.lat !== null ? (

@@ -44,16 +44,16 @@ export function AskAnswer({
         </div>
       ) : (
         <>
-          <p className="mt-3 text-lg leading-relaxed text-pretty">{answer.answer}</p>
+          <p className="mt-3 text-[1.0625rem] leading-relaxed text-pretty">{answer.answer}</p>
 
           {answer.people.length > 0 && (
-            <ul className="mt-4 divide-y border-y">
+            <ul className="mt-4 divide-y rounded-3xl bg-card px-4 shadow-card">
               {answer.people.map(({ person: p, reason }) => (
                 <li key={p.id}>
                   <Link href={`/people/${p.id}`} className="flex items-center gap-3 py-3">
-                    <PersonAvatar personId={p.id} name={p.full_name} size={40} />
+                    <PersonAvatar personId={p.id} name={p.full_name} size={36} />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-[1.0625rem] font-semibold tracking-tight">{p.full_name}</span>
+                      <bdi dir="auto" className="type-name-list block truncate">{p.full_name}</bdi>
                       {reason && <span className="block truncate text-sm text-muted-foreground">{reason}</span>}
                     </span>
                   </Link>
@@ -69,7 +69,7 @@ export function AskAnswer({
                   key={f}
                   type="button"
                   onClick={() => onAsk(f)}
-                  className="h-9 rounded-full border px-3.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="h-9 rounded-full border border-border px-3.5 text-[0.9375rem] transition-[transform,background-color] duration-120 hover:bg-muted active:scale-[0.97]"
                 >
                   {f}
                 </button>

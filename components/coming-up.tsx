@@ -22,16 +22,16 @@ export function ComingUp({ people }: { people: Person[] }) {
   const shown = showAll ? items : items.slice(0, 3);
 
   return (
-    <section aria-labelledby="coming-up" className="mt-2 mb-2 rounded-2xl bg-muted/60 px-4 pt-3 pb-1">
+    <section aria-labelledby="coming-up" className="mt-2 mb-2 rounded-3xl bg-card px-4 pt-3.5 pb-1 shadow-card">
       <div className="flex items-center justify-between">
-        <h2 id="coming-up" className="text-sm font-medium text-muted-foreground">
+        <h2 id="coming-up" className="type-section">
           Coming up
         </h2>
         {items.length > 3 && (
           <button
             type="button"
             onClick={() => setShowAll((s) => !s)}
-            className="h-9 px-1 text-sm font-medium text-primary"
+            className="h-9 px-1 text-sm font-semibold text-primary"
           >
             {showAll ? "Show less" : `All ${items.length}`}
           </button>
@@ -49,7 +49,7 @@ export function ComingUp({ people }: { people: Person[] }) {
               <Link href={`/people/${item.person.id}`} className="flex items-center gap-3 py-2.5">
                 <Icon className="size-4.5 shrink-0 text-primary" aria-hidden />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[0.95rem] font-semibold tracking-tight">{item.person.full_name}</span>
+                  <bdi dir="auto" className="block truncate font-serif text-xl leading-[1.4]">{item.person.full_name}</bdi>
                   <span className="block truncate text-sm text-muted-foreground">{detail}</span>
                 </span>
                 <span

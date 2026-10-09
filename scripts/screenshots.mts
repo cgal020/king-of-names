@@ -255,6 +255,7 @@ const SHOTS: Shot[] = [
     act: async (p) => {
       await p.getByRole("button", { name: "Event mode" }).click();
       await p.getByLabel("Name this event").fill("Gallery night");
+      await p.waitForTimeout(400); // the sheet slides up over 280 ms
     },
   },
   {

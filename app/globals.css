@@ -5,26 +5,28 @@
 /* Dark mode follows the system setting; there is no manual toggle. */
 @custom-variant dark (@media (prefers-color-scheme: dark));
 
+/* Daylight Book (light) and Little Black Book (dark), from the theme handoff
+   in docs/design-handoff. Hex values are the source of truth. Dark mode does
+   not invert the palette: primary turns from deep green into gold. */
 @theme inline {
-    --font-heading: var(--font-sans);
-    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    --color-sidebar-ring: var(--sidebar-ring);
-    --color-sidebar-border: var(--sidebar-border);
-    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-    --color-sidebar-accent: var(--sidebar-accent);
-    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-    --color-sidebar-primary: var(--sidebar-primary);
-    --color-sidebar-foreground: var(--sidebar-foreground);
-    --color-sidebar: var(--sidebar);
-    --color-chart-5: var(--chart-5);
-    --color-chart-4: var(--chart-4);
-    --color-chart-3: var(--chart-3);
-    --color-chart-2: var(--chart-2);
-    --color-chart-1: var(--chart-1);
+    /* next/font sets the --font-dm-* and Noto variables on <html> (app/fonts.ts). */
+    --font-sans: var(--font-dm-sans), var(--font-sans-arabic), var(--font-sans-thai), ui-sans-serif, system-ui, sans-serif;
+    --font-serif: var(--font-dm-serif), var(--font-naskh-arabic), var(--font-serif-thai), Georgia, serif;
+    --font-heading: var(--font-serif);
     --color-ring: var(--ring);
     --color-input: var(--input);
     --color-border: var(--border);
     --color-destructive: var(--destructive);
+    --color-destructive-soft: var(--destructive-soft);
+    --color-warning: var(--warning);
+    --color-warning-soft: var(--warning-soft);
+    --color-success: var(--success);
+    --color-success-soft: var(--success-soft);
+    --color-recording: var(--recording);
+    --color-brand-gold: var(--brand-gold);
+    --color-brand-gold-foreground: var(--brand-gold-foreground);
+    --color-brand-ink: var(--brand-ink);
+    --color-scrim: var(--scrim);
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
     --color-muted-foreground: var(--muted-foreground);
@@ -39,83 +41,110 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
-    --radius-sm: calc(var(--radius) * 0.6);
-    --radius-md: calc(var(--radius) * 0.8);
+    --shadow-card: var(--elevation-card);
+    --shadow-sheet: var(--elevation-sheet);
+    /* Fixed steps rather than multiples of --radius, so the class names keep
+       their meaning: xl for buttons and fields, 2xl for strips and rows,
+       3xl for cards, 4xl for sheets. */
+    --radius-sm: 8px;
+    --radius-md: 10px;
     --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) * 1.4);
-    --radius-2xl: calc(var(--radius) * 1.8);
-    --radius-3xl: calc(var(--radius) * 2.2);
-    --radius-4xl: calc(var(--radius) * 2.6);
+    --radius-xl: 14px;
+    --radius-2xl: 16px;
+    --radius-3xl: 20px;
+    --radius-4xl: 28px;
+}
+
+@theme {
+    --animate-halo: halo 1.4s ease-out infinite;
+    --animate-blink: blink 1.2s ease-in-out infinite;
+    --animate-shimmer: shimmer 1.2s ease-in-out infinite;
+    --ease-calm: cubic-bezier(0.2, 0.8, 0.2, 1);
+
+    @keyframes halo {
+        0% { transform: scale(1); opacity: 0.5; }
+        100% { transform: scale(1.34); opacity: 0; }
+    }
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.25; }
+    }
+    @keyframes shimmer {
+        0%, 100% { opacity: 0.55; }
+        50% { opacity: 1; }
+    }
 }
 
 :root {
-    --background: var(--brand-background);
-    --foreground: oklch(0.145 0.004 170);
-    --card: oklch(1 0.004 170);
-    --card-foreground: oklch(0.145 0.004 170);
-    --popover: oklch(1 0.004 170);
-    --popover-foreground: oklch(0.145 0.004 170);
-    --primary: var(--brand);
-    --primary-foreground: oklch(0.985 0.004 170);
-    --secondary: oklch(0.97 0.004 170);
-    --secondary-foreground: oklch(0.205 0.004 170);
-    --muted: oklch(0.97 0.004 170);
-    --muted-foreground: oklch(0.49 0.006 170);
-    --accent: oklch(0.97 0.004 170);
-    --accent-foreground: oklch(0.205 0.004 170);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0.004 170);
-    --input: oklch(0.922 0.004 170);
+    --radius: 0.75rem;
+    --background: var(--brand-background); /* #f6f1e6 ivory paper */
+    --foreground: #1d2a24;
+    --card: #fffaf0;
+    --card-foreground: #1d2a24;
+    --popover: #fffaf0;
+    --popover-foreground: #1d2a24;
+    --primary: var(--brand); /* #1f4d3d deep green */
+    --primary-foreground: #f6f1e6;
+    --secondary: #ece4d2;
+    --secondary-foreground: #1d2a24;
+    --muted: #ece4d2;
+    --muted-foreground: #5b5d52;
+    --accent: #e2ebe3;
+    --accent-foreground: #1a4234;
+    --border: #dcd1bb;
+    --input: #8a7f65;
     --ring: var(--brand);
-    --chart-1: oklch(0.87 0.004 170);
-    --chart-2: oklch(0.556 0.004 170);
-    --chart-3: oklch(0.439 0.004 170);
-    --chart-4: oklch(0.371 0.004 170);
-    --chart-5: oklch(0.269 0.004 170);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0.004 170);
-    --sidebar-foreground: oklch(0.145 0.004 170);
-    --sidebar-primary: oklch(0.205 0.004 170);
-    --sidebar-primary-foreground: oklch(0.985 0.004 170);
-    --sidebar-accent: oklch(0.97 0.004 170);
-    --sidebar-accent-foreground: oklch(0.205 0.004 170);
-    --sidebar-border: oklch(0.922 0.004 170);
-    --sidebar-ring: oklch(0.708 0.004 170);
+    --destructive: #a8321f;
+    --destructive-soft: #f6ddd5;
+    --warning: #7f520e;
+    --warning-soft: #f6e6c4;
+    --success: #2a6a4b;
+    --success-soft: #dcebe1;
+    /* Gold is 2.4:1 on ivory, so never text here: only the mic, its ring and icons. */
+    --brand-gold: #b48f4c;
+    --brand-gold-foreground: #1d2a24;
+    --brand-gold-gradient: linear-gradient(160deg, #e3c891, #b48f4c);
+    --brand-ink: #1f4d3d;
+    /* Live recording only: the stop button, the progress ring and the dot. */
+    --recording: #c13d29;
+    --scrim: rgb(29 42 36 / 0.35);
+    --elevation-card: 0 1px 2px rgb(29 42 36 / 0.06), 0 8px 24px rgb(29 42 36 / 0.08);
+    --elevation-sheet: 0 -8px 32px rgb(29 42 36 / 0.14);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: var(--brand-background);
-    --foreground: oklch(0.985 0.004 170);
-    --card: oklch(0.205 0.004 170);
-    --card-foreground: oklch(0.985 0.004 170);
-    --popover: oklch(0.205 0.004 170);
-    --popover-foreground: oklch(0.985 0.004 170);
-    --primary: var(--brand);
-    --primary-foreground: oklch(0.145 0.004 170);
-    --secondary: oklch(0.269 0.004 170);
-    --secondary-foreground: oklch(0.985 0.004 170);
-    --muted: oklch(0.269 0.004 170);
-    --muted-foreground: oklch(0.708 0.004 170);
-    --accent: oklch(0.269 0.004 170);
-    --accent-foreground: oklch(0.985 0.004 170);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0.004 170 / 10%);
-    --input: oklch(1 0.004 170 / 15%);
+    --background: var(--brand-background); /* #0f1412 near-black */
+    --foreground: #efe7d6;
+    --card: #16201c;
+    --card-foreground: #efe7d6;
+    --popover: #1a2621;
+    --popover-foreground: #efe7d6;
+    --primary: var(--brand); /* #c9a96a gold */
+    --primary-foreground: #0f1412;
+    --secondary: #1c2824;
+    --secondary-foreground: #efe7d6;
+    --muted: #151d1a;
+    --muted-foreground: #a39c8c;
+    --accent: #17322a;
+    --accent-foreground: #efe7d6;
+    --border: #2f3229;
+    --input: #6e6650;
     --ring: var(--brand);
-    --chart-1: oklch(0.87 0.004 170);
-    --chart-2: oklch(0.556 0.004 170);
-    --chart-3: oklch(0.439 0.004 170);
-    --chart-4: oklch(0.371 0.004 170);
-    --chart-5: oklch(0.269 0.004 170);
-    --sidebar: oklch(0.205 0.004 170);
-    --sidebar-foreground: oklch(0.985 0.004 170);
-    --sidebar-primary: oklch(0.488 0.243 264.376);
-    --sidebar-primary-foreground: oklch(0.985 0.004 170);
-    --sidebar-accent: oklch(0.269 0.004 170);
-    --sidebar-accent-foreground: oklch(0.985 0.004 170);
-    --sidebar-border: oklch(1 0.004 170 / 10%);
-    --sidebar-ring: oklch(0.556 0.004 170);
+    --destructive: #ff8a7a;
+    --destructive-soft: #3a1e1a;
+    --warning: #e8c26a;
+    --warning-soft: #2a2618;
+    --success: #86d0a6;
+    --success-soft: #16291f;
+    --brand-gold: #c9a96a;
+    --brand-gold-foreground: #0f1412;
+    --brand-ink: #17322a;
+    --recording: #ef5b45;
+    --scrim: rgb(0 0 0 / 0.62);
+    /* Dark mode uses a gold hairline instead of a lift. */
+    --elevation-card: 0 0 0 1px rgb(201 169 106 / 0.16), 0 10px 28px rgb(0 0 0 / 0.5);
+    --elevation-sheet: 0 -1px 0 rgb(201 169 106 / 0.2), 0 -12px 40px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -128,11 +157,21 @@
     }
   html {
     @apply font-sans;
+    /* Arabic and Thai have no italics: never slant them. Latin in the same
+       line still uses DM Serif Display's real italic. */
+    font-synthesis-style: none;
     }
 }
-/* Height of the bottom tab bar, including the home-indicator safe area. */
+/* Height of the bottom tab bar, including the home-indicator safe area.
+   Where the bar is hidden (Review, recording), action bars sit at the very
+   bottom and pad themselves clear of the home indicator with --bar-pad. */
 :root {
-  --tabbar-h: calc(3.75rem + env(safe-area-inset-bottom));
+  --tabbar-h: calc(3.3125rem + env(safe-area-inset-bottom));
+  --bar-pad: 0px;
+}
+:root[data-tabbar-hidden] {
+  --tabbar-h: 0px;
+  --bar-pad: env(safe-area-inset-bottom);
 }
 
 @layer base {
@@ -141,6 +180,63 @@
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
+  }
+}
+
+@layer components {
+  /* Type styles from the handoff; sizes in rem so they follow the system text
+     size. Serif faces carry headings and people's names. */
+  .type-display {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 2.625rem; /* 42/44 */
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+  }
+  .type-heading {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 2.1875rem; /* 35/38 */
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+  }
+  .type-sheet-title {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-size: 1.8125rem; /* 29/34 */
+    line-height: 1.17;
+  }
+  /* People's names: upright, and taller lines for Arabic and Thai. */
+  .type-name {
+    font-family: var(--font-serif);
+    font-size: 2.625rem; /* 42/44, 54 for Arabic and Thai */
+    line-height: 1.3;
+    letter-spacing: -0.01em;
+  }
+  .type-name-list {
+    font-family: var(--font-serif);
+    font-size: 1.5rem; /* 24/28, 34 for Arabic and Thai */
+    line-height: 1.4;
+  }
+  /* Bottom sheets: a drag handle on phones; dialogs on wider screens. */
+  @media (width < 40rem) {
+    .sheet::before {
+      content: "";
+      display: block;
+      width: 36px;
+      height: 5px;
+      border-radius: 3px;
+      background: var(--border);
+      margin: -10px auto 14px;
+    }
+  }
+  .type-section {
+    font-size: 0.8125rem; /* 13/18 */
+    line-height: 1.385;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
   }
 }
 

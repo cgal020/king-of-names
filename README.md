@@ -133,6 +133,20 @@ npm run screenshots
 
 Captures every screen and state at phone size, light and dark, into `docs/design-handoff/screens/`. Needs the dev server running and Google Chrome installed.
 
+Once accounts are connected, the screens sit behind sign-in. Run a second dev server with sample data (no Supabase or Mapbox keys) and point the screenshots and browser checks at it:
+
+```bash
+NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= NEXT_PUBLIC_MAPBOX_TOKEN= npx next dev -p 3300
+```
+
+```bash
+SCREENSHOT_BASE_URL=http://localhost:3300 npm run screenshots
+```
+
+```bash
+PWA_BASE_URL=http://localhost:3300 npm run check:flows
+```
+
 ## Deployment
 
 Hosted on Vercel, functions in Mumbai (`bom1`, set in `vercel.json`) next to
