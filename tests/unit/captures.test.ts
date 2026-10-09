@@ -29,8 +29,18 @@ describe("validateCaptureUpload", () => {
         recordedAt: "2026-10-08T11:58:00.000Z",
         timezone: "Asia/Dubai",
         location: { lat: 25.0805, lng: 55.1403, accuracyM: 15 },
+        eventId: null,
       },
     });
+  });
+
+  it("links an Event Mode take to its event, and refuses a malformed event id", () => {
+    const eventId = "0b6f8f3a-1c2d-4e5f-9a8b-7c6d5e4f3a2b";
+    expect(validateCaptureUpload(audio(), fields({ recorded_at: "2026-10-08T11:58:00Z", event_id: eventId }), NOW)).toMatchObject({
+      ok: true,
+      value: { eventId },
+    });
+    expect(validateCaptureUpload(audio(), fields({ recorded_at: "2026-10-08T11:58:00Z", event_id: "night-1" }), NOW)).toMatchObject({ ok: false });
   });
 
   it("accepts iPhone's MP4 audio and a note with no location", () => {
