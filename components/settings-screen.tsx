@@ -172,7 +172,7 @@ export function SettingsScreen() {
         <div className="max-w-[65ch] space-y-3 text-[0.95rem] leading-relaxed text-muted-foreground">
           <p>
             {appConfig.name} stores the people you add, your voice notes, their transcripts, and where and
-            when each note was recorded. It is kept in a private database in Singapore that only your account
+            when each note was recorded. It is kept in a private database in Mumbai, India, that only your account
             can read.
           </p>
           <p>

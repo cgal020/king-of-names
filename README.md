@@ -135,8 +135,8 @@ Captures every screen and state at phone size, light and dark, into `docs/design
 
 ## Deployment
 
-Hosted on Vercel, functions in Singapore (`sin1`, set in `vercel.json`) next to
-the Supabase project in `ap-southeast-1`.
+Hosted on Vercel, functions in Mumbai (`bom1`, set in `vercel.json`) next to
+the Supabase project in `ap-south-1`.
 
 1. Import the GitHub repo into Vercel.
 2. Add every variable from `.env.example` for Production and Preview.

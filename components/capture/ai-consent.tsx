@@ -52,7 +52,7 @@ export function AiConsentSheet({ onAgree, onCancel }: { onAgree: () => void; onC
             <span className="font-medium">Your location</span> goes to Mapbox to find the place name.
           </li>
           <li>
-            Everything is stored in a private database in Singapore that only your account can read. These providers
+            Everything is stored in a private database in Mumbai, India, that only your account can read. These providers
             don&rsquo;t train their models on it.
           </li>
         </ul>
