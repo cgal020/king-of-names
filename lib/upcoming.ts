@@ -33,7 +33,8 @@ export function nextBirthday(month: number, day: number, today: Date) {
   return null;
 }
 
-export function upcoming(people: Person[], today: Date, withinDays = 42, overdueDays = 14): UpcomingItem[] {
+// Overdue follow-ups stay until they're marked done or snoozed.
+export function upcoming(people: Person[], today: Date, withinDays = 42, overdueDays = Infinity): UpcomingItem[] {
   const items: UpcomingItem[] = [];
   for (const person of people) {
     if (person.birthday_month && person.birthday_day) {
@@ -52,6 +53,17 @@ export function upcoming(people: Person[], today: Date, withinDays = 42, overdue
     }
   }
   return items.sort((a, b) => a.inDays - b.inDays);
+}
+
+// A follow-up snoozed a week from today, as YYYY-MM-DD.
+export function snoozedDate(today: Date, days = 7) {
+  return ymd(new Date(today.getFullYear(), today.getMonth(), today.getDate() + days));
+}
+
+// Whole days from today to a YYYY-MM-DD date; negative when it's past.
+export function daysUntil(date: string, today: Date) {
+  const [y, m, d] = date.split("-").map(Number);
+  return dayDiff(today, new Date(y, m - 1, d));
 }
 
 export function whenLabel(inDays: number) {

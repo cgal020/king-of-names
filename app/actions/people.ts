@@ -107,3 +107,22 @@ export async function deletePerson(id: string): Promise<{ ok: boolean; error?: s
   revalidatePath("/people");
   return { ok: true };
 }
+
+// Changes just the follow-up: Done clears it, Snooze moves its date, and Undo
+// puts the old one back.
+export async function setFollowUp(
+  id: string,
+  followUp: { note: string | null; date: string | null },
+): Promise<{ ok: boolean }> {
+  const note = typeof followUp.note === "string" ? followUp.note.trim().slice(0, 500) || null : null;
+  const date = typeof followUp.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(followUp.date) ? followUp.date : null;
+  if (usingSampleData()) return { ok: true };
+  if (!isPersonId(id)) return { ok: false };
+  const supabase = await createClient();
+  const { error } = await supabase.from("people").update({ follow_up_note: note, follow_up_date: date }).eq("id", id);
+  if (error) return { ok: false };
+  revalidatePath("/people");
+  revalidatePath(`/people/${id}`);
+  return { ok: true };
+}
+

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getMockPerson } from "@/lib/mock/people";
-import { nextBirthday, upcoming, whenLabel } from "@/lib/upcoming";
+import { daysUntil, nextBirthday, snoozedDate, upcoming, whenLabel } from "@/lib/upcoming";
 import type { Person } from "@/lib/types";
 
 const base = getMockPerson("isabella-rossi")!;
@@ -8,7 +8,7 @@ const person = (overrides: Partial<Person>): Person => ({ ...base, id: crypto.ra
 const today = new Date(2026, 9, 7); // 7 Oct 2026, local time
 
 describe("upcoming", () => {
-  it("lists birthdays and follow-ups in date order, overdue first", () => {
+  it("lists birthdays and follow-ups in date order, overdue first, never dropping an overdue one", () => {
     const items = upcoming(
       [
         person({ full_name: "Late", follow_up_date: "2026-10-01" }),
@@ -20,6 +20,7 @@ describe("upcoming", () => {
       today,
     );
     expect(items.map((i) => [i.person.full_name, i.kind, i.inDays])).toEqual([
+      ["Long overdue", "follow_up", -67],
       ["Late", "follow_up", -6],
       ["Soon", "birthday", 2],
       ["Later", "follow_up", 34],
@@ -34,6 +35,12 @@ describe("upcoming", () => {
   it("puts 29 February birthdays on the 28th in non-leap years", () => {
     const d = nextBirthday(2, 29, today)!;
     expect([d.getFullYear(), d.getMonth() + 1, d.getDate()]).toEqual([2027, 2, 28]);
+  });
+
+  it("snoozes a follow-up to a week from today", () => {
+    expect(snoozedDate(today)).toBe("2026-10-14");
+    expect(snoozedDate(new Date(2026, 11, 28))).toBe("2027-01-04");
+    expect(daysUntil("2026-10-01", today)).toBe(-6);
   });
 
   it("labels days in plain words", () => {

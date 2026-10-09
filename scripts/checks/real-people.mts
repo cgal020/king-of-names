@@ -120,6 +120,29 @@ try {
   await expect(page.getByRole("link", { name: new RegExp(name) })).toHaveCount(0);
   pass("search also finds them by company, role and phone number");
 
+  // Follow-ups: a month overdue still shows, can be ticked off, undone and snoozed.
+  const monthAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  await admin.from("people").update({ follow_up_note: "Send the flamingo deck", follow_up_date: monthAgo }).eq("id", personId);
+  await page.goto(BASE + "/people", { waitUntil: "networkidle" });
+  await expect(page.getByText("30 days overdue")).toBeVisible();
+  await page.getByRole("button", { name: `Mark the follow-up with ${name} done` }).click();
+  await expect(page.getByText(`Follow-up with ${name} done`)).toBeVisible();
+  await expect.poll(async () => (await admin.from("people").select("follow_up_date").eq("id", personId).single()).data?.follow_up_date ?? null).toBeNull();
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect.poll(async () => (await admin.from("people").select("follow_up_date").eq("id", personId).single()).data?.follow_up_date).toBe(monthAgo);
+  await page.goto(BASE + `/people/${personId}`, { waitUntil: "networkidle" });
+  await expect(page.getByText("(30 days overdue)")).toBeVisible();
+  await page.getByRole("button", { name: "Snooze a week" }).click();
+  const weekOn = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10);
+  await expect
+    .poll(async () => (await admin.from("people").select("follow_up_date").eq("id", personId).single()).data?.follow_up_date)
+    .not.toBe(monthAgo);
+  const { data: snoozed } = await admin.from("people").select("follow_up_date, follow_up_note").eq("id", personId).single();
+  expect(snoozed?.follow_up_note).toBe("Send the flamingo deck");
+  // A week from today on the phone, which may be a day either side of UTC.
+  expect(Math.abs(Date.parse(snoozed!.follow_up_date) - Date.parse(weekOn))).toBeLessThanOrEqual(86_400_000);
+  pass("an overdue follow-up stays in Coming up, and can be ticked off, undone and snoozed a week");
+
   await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
   await page.getByLabel("Your question").fill("Who breeds flamingos?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();

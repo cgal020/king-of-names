@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { BellIcon, CalendarIcon, PhoneIcon } from "lucide-react";
+import { CalendarIcon, PhoneIcon } from "lucide-react";
 import { DeletePersonButton } from "@/components/delete-person-button";
 import { MiniMap } from "@/components/map/mini-map";
+import { FollowUpCard } from "@/components/follow-up-card";
 import { MeetingTimeline } from "@/components/meeting-timeline";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { PersonPhotos } from "@/components/photos/person-photos";
@@ -93,17 +94,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         <SaveContactButton person={p} />
       </div>
 
-      {(p.follow_up_note || p.follow_up_date) && (
-        <div className="mt-4 flex gap-3 rounded-2xl bg-accent p-4 text-accent-foreground">
-          <BellIcon className="mt-0.5 size-4.5 shrink-0" aria-hidden />
-          <div>
-            <p className="text-sm font-semibold">
-              Follow up{p.follow_up_date && <> &middot; {formatShortDate(p.follow_up_date)}</>}
-            </p>
-            {p.follow_up_note && <p className="mt-0.5 text-[0.95rem]">{p.follow_up_note}</p>}
-          </div>
-        </div>
-      )}
+      <FollowUpCard person={p} />
 
       {p.notes && (
         <section className="mt-8">
