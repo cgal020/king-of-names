@@ -4,7 +4,7 @@ import { useEffect, useId, useMemo, useState, useSyncExternalStore } from "react
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { CircleAlertIcon, PlusIcon, ScanTextIcon, UsersIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CircleAlertIcon, PlusIcon, ScanTextIcon, UsersIcon } from "lucide-react";
 import { useCardResult } from "@/components/capture/card-store";
 import { useRecording } from "@/components/capture/recording-store";
 import { ConfirmButton } from "@/components/confirm-button";
@@ -23,6 +23,7 @@ import { createPerson, updatePerson, type SaveResult } from "@/app/actions/peopl
 import { formatMetDate, localInputToIso, monthName } from "@/lib/format";
 import { cityOptions } from "@/lib/geo/cities";
 import { locateOnce } from "@/lib/geo/locate";
+import { cleanMentions } from "@/lib/people/mentioned";
 import { findSimilar } from "@/lib/similar";
 import { knownTags } from "@/lib/tags";
 import type { Confidence, Person } from "@/lib/types";
@@ -49,6 +50,8 @@ type PersonFormProps = {
   transcriptOpen?: boolean;
   // The note is on the server, so saving and discarding go there too.
   stored?: boolean;
+  // Other people the note names, offered as their own entries on Review.
+  alsoMentioned?: string[];
 };
 
 type Section = "phone" | "birthday" | "followUp" | "work" | "email" | "web" | "address";
@@ -110,6 +113,7 @@ export function PersonForm({
   after,
   transcriptOpen = false,
   stored = false,
+  alsoMentioned = [],
 }: PersonFormProps) {
   const router = useRouter();
   const draftId = useId();
@@ -185,6 +189,10 @@ export function PersonForm({
   const zone = values.met_timezone ?? deviceZone;
   const metAtLocal = values.met_at_local || (zone ? toLocalInput(values.met_at, zone) : "");
   const canSave = values.full_name.trim().length > 0 && metAtLocal !== "";
+  // Others the note named: offered on Review, unless they're already saved.
+  const [alsoSave, setAlsoSave] = useState<string[]>([]);
+  const mentioned = mode === "review" ? cleanMentions(alsoMentioned, values.full_name) : [];
+  const chosenAlso = alsoSave.filter((n) => mentioned.includes(n) && !findSimilar(n, people).length);
 
   // Someone added by hand is stamped with where the phone is now.
   useEffect(() => {
@@ -232,7 +240,7 @@ export function PersonForm({
     try {
       result =
         mode === "review" && captureId
-          ? await saveNote(captureId, payload, { cityByHand, existingPersonId: updating?.id ?? null })
+          ? await saveNote(captureId, payload, { cityByHand, existingPersonId: updating?.id ?? null, alsoSave: chosenAlso })
           : mode === "edit" && personId
             ? await updatePerson(personId, payload, { cityByHand })
             : await createPerson(payload, { cityByHand });
@@ -246,8 +254,15 @@ export function PersonForm({
     }
     if (photoTarget.captureId) attachDraft(photoTarget.captureId, result.id);
     setCard(null);
+    const missed = chosenAlso.length - (result.also ?? 0);
     toast.success(mode === "edit" ? "Changes saved" : updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
-      description: result.preview ? "Preview only. Nothing was stored." : undefined,
+      description: result.preview
+        ? "Preview only. Nothing was stored."
+        : missed > 0
+          ? `Couldn’t also save ${chosenAlso.length === 1 ? chosenAlso[0] : "the others"}. Add them from People.`
+          : chosenAlso.length
+            ? `Also saved ${listNames(chosenAlso)}.`
+            : undefined,
     });
     if (after) {
       after.onDone("saved");
@@ -432,6 +447,15 @@ export function PersonForm({
             className="min-h-24 rounded-xl px-3.5 py-2.5 text-base leading-relaxed"
           />
         </Field>
+
+        {mentioned.length > 0 && (
+          <AlsoMentioned
+            names={mentioned}
+            people={people}
+            chosen={alsoSave}
+            onToggle={(n) => setAlsoSave((list) => (list.includes(n) ? list.filter((x) => x !== n) : [...list, n]))}
+          />
+        )}
 
         <TagEditor
           relationship={values.relationship}
@@ -702,6 +726,80 @@ function Field({
         {fromCard && <FromCard />}
       </label>
       {children}
+    </div>
+  );
+}
+
+// "Rosa", "Rosa and Ali", "Rosa, Ali and Mei".
+function listNames(names: string[]) {
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "");
+}
+
+// Others the note named: save them too, or open them if they're already saved.
+function AlsoMentioned({
+  names,
+  people,
+  chosen,
+  onToggle,
+}: {
+  names: string[];
+  people: Person[];
+  chosen: string[];
+  onToggle: (name: string) => void;
+}) {
+  return (
+    <div className="rounded-2xl bg-muted p-4">
+      <p className="flex items-center gap-2 text-[0.95rem] font-medium">
+        <UsersIcon className="size-4 text-muted-foreground" aria-hidden />
+        Also in this note
+      </p>
+      <p className="mt-1 text-sm text-muted-foreground">Save them as their own people too, met at the same time and place.</p>
+      <ul className="mt-3 space-y-2">
+        {names.map((name) => {
+          const known = findSimilar(name, people)[0];
+          const on = chosen.includes(name);
+          return (
+            <li key={name}>
+              {known ? (
+                <Link
+                  href={`/people/${known.id}`}
+                  className="flex min-h-12 items-center justify-between gap-3 rounded-xl bg-background px-3.5 py-2"
+                >
+                  <span className="min-w-0">
+                    <bdi dir="auto" className="block truncate font-medium">{known.full_name}</bdi>
+                    <span className="block text-sm text-muted-foreground">Already in your people</span>
+                  </span>
+                  <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => onToggle(name)}
+                  className={cn(
+                    "flex min-h-12 w-full items-center gap-3 rounded-xl border bg-background px-3.5 py-2 text-left transition-colors",
+                    on ? "border-primary" : "border-transparent",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid size-6 shrink-0 place-items-center rounded-full border",
+                      on ? "border-primary bg-primary text-primary-foreground" : "border-input",
+                    )}
+                    aria-hidden
+                  >
+                    {on ? <CheckIcon className="size-3.5" /> : <PlusIcon className="size-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm text-muted-foreground">{on ? "Will be saved too" : "Also save"}</span>
+                    <bdi dir="auto" className="block truncate font-medium">{name}</bdi>
+                  </span>
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

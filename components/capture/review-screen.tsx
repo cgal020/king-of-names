@@ -91,6 +91,7 @@ export function ReviewScreen({
         transcript={draft.transcript}
         durationSeconds={draft.durationSeconds}
         nameConfidence={draft.nameConfidence}
+        alsoMentioned={draft.additionalPeople}
         transcriptOpen={failed.includes("extraction")}
         stored={stored}
         audio={note || take ? (url ? { url, durationSeconds: durationSeconds ?? 0 } : null) : undefined}

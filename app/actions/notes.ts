@@ -8,6 +8,7 @@ import type { SaveResult } from "@/app/actions/people";
 import { getCapture } from "@/lib/data/captures";
 import { usingSampleData } from "@/lib/data/people";
 import { reverseGeocode } from "@/lib/geo/reverse-geocode";
+import { cleanMentions, mentionedPerson } from "@/lib/people/mentioned";
 import { isPersonId, PersonInputSchema, type PersonInput } from "@/lib/people/validate";
 import { createClient } from "@/lib/supabase/server";
 
@@ -28,7 +29,11 @@ const FILLABLE = [
 export async function saveNote(
   captureId: string,
   input: unknown,
-  { cityByHand = false, existingPersonId = null }: { cityByHand?: boolean; existingPersonId?: string | null } = {},
+  {
+    cityByHand = false,
+    existingPersonId = null,
+    alsoSave = [],
+  }: { cityByHand?: boolean; existingPersonId?: string | null; alsoSave?: string[] } = {},
 ): Promise<SaveResult> {
   const parsed = PersonInputSchema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the highlighted fields." };
@@ -80,9 +85,17 @@ export async function saveNote(
     .eq("id", captureId);
   if (error) return { ok: false, error: NOT_SAVED };
 
+  // Others the note named, if the user chose to save them too.
+  let also = 0;
+  const names = cleanMentions(alsoSave, person.full_name);
+  if (names.length) {
+    const { data: added } = await supabase.from("people").insert(names.map((n) => mentionedPerson(n, person))).select("id");
+    also = added?.length ?? 0;
+  }
+
   revalidatePath("/people");
   revalidatePath(`/people/${personId}`);
-  return { ok: true, id: personId };
+  return { ok: true, id: personId, also };
 }
 
 // Discarding deletes the recording and the transcript, as the dialog says.

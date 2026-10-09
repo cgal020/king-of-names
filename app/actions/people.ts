@@ -10,7 +10,8 @@ import { isPersonId, PersonInputSchema, type PersonInput } from "@/lib/people/va
 import { createClient } from "@/lib/supabase/server";
 
 export type SaveResult =
-  | { ok: true; id: string | null; preview?: boolean }
+  // also: how many of the other people named in a note were saved too.
+  | { ok: true; id: string | null; preview?: boolean; also?: number }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
 
 const NOT_SAVED = "That didn’t save. Check your connection and try again.";

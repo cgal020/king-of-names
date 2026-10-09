@@ -102,6 +102,54 @@ try {
   await expect(page.getByText("Coffee again; wants the Melbourne intro.")).toBeVisible();
   pass("a typed Met again note is saved as a second meeting");
 
+  // A note naming other people, as the AI leaves it once a note is read.
+  const { data: told, error: toldError } = await admin
+    .from("captures")
+    .insert({
+      user_id: userId,
+      status: "extracted",
+      recorded_at: new Date().toISOString(),
+      recorded_timezone: "Asia/Bangkok",
+      transcript: `Met Daniel Reyes at the Soho House rooftop with his partner Rosa Reyes. ${name} was there too.`,
+      extraction: {
+        full_name: "Daniel Reyes",
+        where_met_text: "Soho House rooftop",
+        phone: null,
+        birthday: { month: null, day: null, year: null },
+        notes: "Came with his partner Rosa.",
+        follow_up: { note: null, date: null },
+        extras: { email: null, company: null, role: null, website: null, linkedin: null },
+        other_details: [],
+        additional_people: ["Rosa Reyes", name],
+        relationship: null,
+        suggested_tags: [],
+        confidence: { full_name: "high" },
+      },
+    })
+    .select("id")
+    .single();
+  if (toldError) throw toldError;
+  await page.goto(BASE + `/capture/review?capture=${told.id}`, { waitUntil: "networkidle" });
+  await expect(page.getByText("Also in this note")).toBeVisible();
+  // Someone already saved is linked, not offered again.
+  await expect(page.getByRole("link", { name: new RegExp(`${name}.*Already in your people`) })).toBeVisible();
+  await page.getByRole("button", { name: /Also save\s*Rosa Reyes/ }).click();
+  await expect(page.getByRole("button", { name: /Will be saved too\s*Rosa Reyes/ })).toHaveAttribute("aria-pressed", "true");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await page.waitForURL(/\/people\/[0-9a-f-]{36}$/, { waitUntil: "commit" });
+  await expect(page.getByText("Also saved Rosa Reyes.")).toBeVisible();
+  const { data: rosa } = await admin.from("people").select("notes, where_met_text, phone, met_at").eq("user_id", userId).eq("full_name", "Rosa Reyes");
+  expect(rosa).toHaveLength(1);
+  expect(rosa![0]).toMatchObject({ notes: "Mentioned in your note about Daniel Reyes.", where_met_text: "Soho House rooftop", phone: null });
+  const { count: namesakes } = await admin.from("people").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("full_name", name);
+  expect(namesakes).toBe(1);
+  pass("others named in a note can be saved too, met at the same time and place, without duplicating anyone");
+  // Tidy up, so the later steps count only their own notes and people.
+  await admin.from("captures").delete().eq("id", told.id);
+  await admin.from("people").delete().eq("user_id", userId).in("full_name", ["Daniel Reyes", "Rosa Reyes"]);
+  // Back to the first person for the steps below.
+  await page.goto(BASE + `/people/${personId}`, { waitUntil: "networkidle" });
+
   await page.goto(BASE + "/capture", { waitUntil: "networkidle" });
   await expect(page.getByText("to review")).toHaveCount(0);
   const discardId = await record(page);
