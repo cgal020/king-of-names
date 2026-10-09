@@ -6,6 +6,7 @@ import { CircleAlertIcon, CloudUploadIcon } from "lucide-react";
 import { eventActions } from "@/components/capture/event-store";
 import { ConfirmButton } from "@/components/confirm-button";
 import { authConfigured } from "@/lib/auth/config";
+import type { PipelineStep } from "@/lib/pipeline/process-capture";
 import type { Draft } from "@/lib/types";
 import {
   classifyUploadStatus,
@@ -64,6 +65,38 @@ export async function processCapture(id: string): Promise<{ status: string; fail
   const response = await fetch(`/api/captures/${id}/process`, { method: "POST", signal: AbortSignal.timeout(60_000) });
   if (!response.ok) throw new Error(`Processing failed (${response.status})`);
   return response.json();
+}
+
+// The same, reporting each step as the server finishes it (one JSON line per
+// step, then the result), so Capture shows real progress.
+export async function processCaptureLive(
+  id: string,
+  onStep: (step: PipelineStep, ok: boolean) => void,
+): Promise<{ status: string; failedSteps: string[]; draft: Draft | null }> {
+  const response = await fetch(`/api/captures/${id}/process`, {
+    method: "POST",
+    headers: { accept: "application/x-ndjson" },
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok || !response.body) throw new Error(`Processing failed (${response.status})`);
+  const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += value;
+    let end: number;
+    while ((end = buffer.indexOf("\n")) >= 0) {
+      const line = buffer.slice(0, end).trim();
+      buffer = buffer.slice(end + 1);
+      if (!line) continue;
+      const message = JSON.parse(line);
+      if (message.step) onStep(message.step, Boolean(message.ok));
+      else if (message.result) return message.result;
+      else if (message.error) throw new Error(message.error);
+    }
+  }
+  throw new Error("Processing ended early");
 }
 
 let store: ReturnType<typeof indexedDbStore> | null = null;

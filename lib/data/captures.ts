@@ -11,7 +11,7 @@ import { transcribe } from "@/lib/ai/transcribe";
 import type { Place } from "@/lib/geo/mapbox";
 import { reverseGeocode } from "@/lib/geo/reverse-geocode";
 import { buildDraft } from "@/lib/pipeline/draft";
-import { processCapture, type CapturePatch, type CaptureStatus } from "@/lib/pipeline/process-capture";
+import { processCapture, type CapturePatch, type CaptureStatus, type PipelineDeps } from "@/lib/pipeline/process-capture";
 import { createClient } from "@/lib/supabase/server";
 import { knownTags } from "@/lib/tags";
 import type { Confidence, Draft, Person } from "@/lib/types";
@@ -81,7 +81,12 @@ export function draftFromRow(row: CaptureRow): Draft {
 
 // Runs transcription, extraction and the place lookup for a stored note.
 // Each step is saved as it finishes, so a failure keeps what came before.
-export async function processStoredCapture(supabase: SupabaseClient, row: CaptureRow, people: Person[]) {
+export async function processStoredCapture(
+  supabase: SupabaseClient,
+  row: CaptureRow,
+  people: Person[],
+  onStep?: PipelineDeps["onStep"],
+) {
   if (!row.audio_path || !row.audio_mime) throw new Error("This note has no recording");
   const { data: blob, error } = await supabase.storage.from("audio").download(row.audio_path);
   if (error || !blob) throw new Error("The recording couldn't be read");
@@ -105,6 +110,7 @@ export async function processStoredCapture(supabase: SupabaseClient, row: Captur
       extract: extractPerson,
       geocode: (lat, lng) => reverseGeocode(lat, lng),
       saveCapture: save,
+      onStep,
     },
   );
 }

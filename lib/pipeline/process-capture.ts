@@ -22,7 +22,11 @@ export type PipelineDeps = {
   extract: (context: ExtractionContext) => Promise<{ raw: unknown; clean: CleanExtraction }>;
   geocode: (lat: number, lng: number) => Promise<Place | null>;
   saveCapture: (captureId: string, patch: CapturePatch) => Promise<void>;
+  // Told as each step finishes, so Capture can show real progress.
+  onStep?: (step: PipelineStep, ok: boolean) => void;
 };
+
+export type PipelineStep = "transcription" | "extraction" | "geocoding";
 
 export type CaptureInput = CaptureMeta & {
   captureId: string;
@@ -52,23 +56,39 @@ export async function processCapture(input: CaptureInput, deps: PipelineDeps): P
   const failedSteps: PipelineResult["failedSteps"] = [];
 
   // Geocoding doesn't depend on the audio, so it runs alongside transcription.
+  const told = (step: PipelineStep, ok: boolean) => {
+    try {
+      deps.onStep?.(step, ok);
+    } catch {
+      // Progress is a nicety; it never stops the pipeline.
+    }
+  };
   const placePromise: Promise<Place | null> = input.location
-    ? deps.geocode(input.location.lat, input.location.lng).catch(() => {
-        failedSteps.push("geocoding");
-        return null;
-      })
+    ? deps.geocode(input.location.lat, input.location.lng).then(
+        (place) => {
+          told("geocoding", true);
+          return place;
+        },
+        () => {
+          failedSteps.push("geocoding");
+          told("geocoding", false);
+          return null;
+        },
+      )
     : Promise.resolve(null);
 
   let transcript: string;
   try {
     transcript = await deps.transcribe(input.audio, input.mime, input.keywords);
   } catch (error) {
+    told("transcription", false);
     const place = await placePromise;
     failedSteps.push("transcription");
     await deps.saveCapture(input.captureId, { status: "failed", geocode: place, error: reason("Transcription", error) });
     return { status: "failed", transcript: null, nameConfidence: null, additionalPeople: [], draft: buildDraft(input, null, place), failedSteps };
   }
   await deps.saveCapture(input.captureId, { status: "transcribed", transcript });
+  told("transcription", true);
 
   let extraction: { raw: unknown; clean: CleanExtraction } | null = null;
   try {
@@ -80,12 +100,14 @@ export async function processCapture(input: CaptureInput, deps: PipelineDeps): P
     });
   } catch (error) {
     failedSteps.push("extraction");
+    told("extraction", false);
     const place = await placePromise;
     await deps.saveCapture(input.captureId, { status: "failed", geocode: place, error: reason("Extraction", error) });
     // The transcript still goes back so the user can finish by hand.
     return { status: "failed", transcript, nameConfidence: null, additionalPeople: [], draft: buildDraft(input, null, place), failedSteps };
   }
 
+  told("extraction", true);
   const place = await placePromise;
   await deps.saveCapture(input.captureId, {
     status: "extracted",

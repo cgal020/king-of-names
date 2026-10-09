@@ -89,6 +89,31 @@ describe("processCapture", () => {
     expect(saved.map((p) => p.status)).toEqual(["transcribed", "failed"]);
   });
 
+  it("reports each step as it finishes, for Capture's progress", async () => {
+    const steps: string[] = [];
+    const { d } = deps({ onStep: (step, ok) => steps.push(`${step}:${ok}`) });
+    await processCapture(input, d);
+    expect(steps).toContain("geocoding:true");
+    expect(steps.filter((s) => !s.startsWith("geocoding"))).toEqual(["transcription:true", "extraction:true"]);
+
+    const failed: string[] = [];
+    const broken = deps({
+      transcribe: vi.fn(async () => Promise.reject(new Error("no key"))),
+      onStep: (step, ok) => failed.push(`${step}:${ok}`),
+    });
+    await processCapture({ ...input, location: null }, broken.d);
+    expect(failed).toEqual(["transcription:false"]);
+  });
+
+  it("keeps going when the progress listener throws", async () => {
+    const { d } = deps({
+      onStep: () => {
+        throw new Error("listener gone");
+      },
+    });
+    expect((await processCapture(input, d)).status).toBe("extracted");
+  });
+
   it("never stores note content in error text", async () => {
     const leaky = new Error(`Model said: ${sample.transcript}`);
     const { d, saved } = deps({ extract: vi.fn(async () => Promise.reject(leaky)) });

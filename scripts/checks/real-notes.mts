@@ -32,11 +32,18 @@ const { data: created, error: createError } = await admin.auth.admin.createUser(
 if (createError || !created.user) throw new Error(`Could not create the test account: ${createError?.message}`);
 const userId = created.user.id;
 
-async function record(page: Page) {
+let steps = false;
+async function record(page: Page, { watchSteps = false } = {}) {
   await page.goto(BASE + "/capture", { waitUntil: "networkidle" });
   await page.getByRole("button", { name: "Start recording" }).click();
   await page.waitForTimeout(2500);
   await page.getByRole("button", { name: "Stop recording" }).click();
+  if (watchSteps) {
+    // The steps follow the server: with no key, transcription shows as failed.
+    const outcome = transcribes ? "Picking out the details, done" : "Couldn’t transcribe it; you can type the details";
+    await page.getByText(outcome).waitFor({ state: "attached", timeout: 30_000 });
+    steps = true;
+  }
   await page.waitForURL(/\/capture\/review\?capture=[0-9a-f-]{36}$/, { timeout: 60_000, waitUntil: "commit" });
   return new URL(page.url()).searchParams.get("capture")!;
 }
@@ -62,7 +69,7 @@ try {
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL("**/capture", { waitUntil: "commit" });
 
-  const noteId = await record(page);
+  const noteId = await record(page, { watchSteps: true });
   const { data: stored } = await admin.from("captures").select("user_id, status, audio_path, lat, geocode, transcript").eq("id", noteId).single();
   expect(stored?.user_id).toBe(userId);
   expect(stored?.audio_path).toBe(`${userId}/${noteId}.webm`);
@@ -70,6 +77,8 @@ try {
   const { data: files } = await admin.storage.from("audio").list(userId);
   expect(files?.map((f) => f.name)).toContain(`${noteId}.webm`);
   pass("a recording is uploaded to the account's own audio folder with its place");
+  expect(steps).toBe(true);
+  pass("Capture's steps follow the server's real progress before Review opens");
 
   await expect(page.locator("audio")).toHaveCount(1);
   if (transcribes) {

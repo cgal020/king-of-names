@@ -15,9 +15,10 @@ import {
   ScanLineIcon,
   QrCodeIcon,
   SettingsIcon,
+  XIcon,
 } from "lucide-react";
 import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
-import { CouldNotSend, processCapture, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
+import { CouldNotSend, processCapture, processCaptureLive, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
 import { EventBanner, StartEventSheet } from "@/components/capture/event-mode";
 import { currentEvent, eventActions, useEventSession } from "@/components/capture/event-store";
 import { InstallCoach } from "@/components/capture/install-coach";
@@ -38,13 +39,30 @@ import { trackLocation, type LocationStatus } from "@/lib/geo/locate";
 import { mockTakeDraft } from "@/lib/mock/events";
 import { mockDraft, mockPendingReview } from "@/lib/mock/people";
 import type { QueuedCapture } from "@/lib/offline/queue";
+import type { PipelineStep } from "@/lib/pipeline/process-capture";
 import type { Draft, Photo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-// Mockup timings for the server pipeline after the upload. The real target
-// is under 10 s.
-const STEPS = ["Saving the recording", "Transcribing", "Picking out the details", "Finding the place"];
+// What happens to a note after Stop. With accounts, each step is ticked as
+// the server reports it (place runs alongside transcription); the preview
+// walks through them on a timer. The real target is under 10 s.
+type StepState = "waiting" | "working" | "done" | "failed" | "skipped";
+type Progress = Record<"saving" | PipelineStep, StepState>;
+const STEPS: { key: keyof Progress; label: string; failed: string; skipped: string }[] = [
+  { key: "saving", label: "Saving the recording", failed: "Couldn’t save it", skipped: "" },
+  { key: "transcription", label: "Transcribing", failed: "Couldn’t transcribe it; you can type the details", skipped: "" },
+  { key: "extraction", label: "Picking out the details", failed: "Couldn’t pick out the details; you can type them", skipped: "Nothing to read yet" },
+  { key: "geocoding", label: "Finding the place", failed: "Couldn’t find the place; set the city on review", skipped: "No location; set the city on review" },
+];
+const STARTING: Progress = { saving: "working", transcription: "waiting", extraction: "waiting", geocoding: "waiting" };
 const STEP_MS = 650;
+
+// A step the server finished, and what it means for the one after it.
+function stepDone(progress: Progress, step: PipelineStep, ok: boolean): Progress {
+  const next = { ...progress, [step]: ok ? "done" : "failed" };
+  if (step === "transcription") next.extraction = ok ? "working" : "skipped";
+  return next;
+}
 
 const LIMIT_TITLE = "That’s 60 notes in the last hour";
 const limitDetail = (seconds: number) => `This one is saved on your phone and goes in ${describeWait(seconds)}.`;
@@ -62,7 +80,7 @@ export function CaptureScreen() {
   const [elapsed, setElapsed] = useState(0);
   const [level, setLevel] = useState(0);
   const [location, setLocation] = useState<LocationState>({ state: "idle" });
-  const [step, setStep] = useState(0);
+  const [progress, setProgress] = useState<Progress>(STARTING);
   // The first step, saving the recording, ends when the upload does.
   const [uploaded, setUploaded] = useState(false);
   // The note on the server (accounts connected) and whether its draft is ready.
@@ -110,19 +128,27 @@ export function CaptureScreen() {
     return () => setRecordingChrome(false);
   }, [phase]);
 
-  // Walk through the pipeline steps, then open the review screen. With
-  // accounts connected, the last step waits for the server's draft.
+  // With accounts, Review opens once the server is done, after a beat to see
+  // the last tick. The preview ticks each step on a timer, then opens its
+  // sample note.
   useEffect(() => {
-    if (phase !== "processing") return;
-    if (step >= STEPS.length) {
-      router.push(noteId ? `/capture/review?capture=${noteId}` : "/capture/review");
+    if (phase !== "processing" || !uploaded) return;
+    if (noteId) {
+      if (!processed) return;
+      const id = window.setTimeout(() => router.push(`/capture/review?capture=${noteId}`), 450);
+      return () => window.clearTimeout(id);
+    }
+    const index = STEPS.findIndex((s) => progress[s.key] !== "done");
+    if (index < 0) {
+      router.push("/capture/review");
       return;
     }
-    if (step === 0 && !uploaded) return;
-    if (step === STEPS.length - 1 && noteId && !processed) return;
-    const id = window.setTimeout(() => setStep((s) => s + 1), STEP_MS);
+    const id = window.setTimeout(
+      () => setProgress((p) => ({ ...p, [STEPS[index].key]: "done", ...(STEPS[index + 1] ? { [STEPS[index + 1].key]: "working" } : {}) })),
+      STEP_MS,
+    );
     return () => window.clearTimeout(id);
-  }, [phase, step, uploaded, noteId, processed, router]);
+  }, [phase, progress, uploaded, noteId, processed, router]);
 
   // The "Record a note" home-screen shortcut opens /capture?record=1.
   useEffect(() => {
@@ -191,7 +217,7 @@ export function CaptureScreen() {
       setLocation({ state: "idle" });
     } else {
       if (result) setRecording({ url: URL.createObjectURL(result.blob), durationSeconds: result.durationSeconds });
-      setStep(0);
+      setProgress(STARTING);
       setUploaded(false);
       setNoteId(null);
       setProcessed(false);
@@ -224,10 +250,13 @@ export function CaptureScreen() {
         setUploaded(true);
         if (authConfigured()) {
           setNoteId(item.id);
+          setProgress((p) => ({ ...p, saving: "done", transcription: "working", geocoding: item.location ? "working" : "skipped" }));
           // Review processes it again if this doesn't get through.
-          void processCapture(item.id)
+          void processCaptureLive(item.id, (step, ok) => setProgress((p) => stepDone(p, step, ok)))
             .catch(() => null)
             .finally(() => setProcessed(true));
+        } else {
+          setProgress((p) => ({ ...p, saving: "done", transcription: "working" }));
         }
         return;
       }
@@ -313,7 +342,7 @@ export function CaptureScreen() {
       {/* Short screens (Safari with its toolbars) tighten up so the record button stays in view. */}
       <section className="flex flex-1 flex-col justify-center py-6 [@media(max-height:720px)]:py-3">
         {phase === "processing" ? (
-          <ProcessingSteps step={step} />
+          <ProcessingSteps progress={progress} />
         ) : (
           <>
             <h1 className="type-display [@media(max-height:720px)]:text-[2.25rem]">
@@ -605,33 +634,40 @@ function LocationChip({ location, placeName }: { location: LocationState; placeN
   );
 }
 
-function ProcessingSteps({ step }: { step: number }) {
+function ProcessingSteps({ progress }: { progress: Progress }) {
   return (
     <div>
       <h1 className="type-display">Got it.</h1>
       <ol className="mt-5 space-y-3" aria-live="polite">
-        {STEPS.map((label, i) => {
-          const done = i < step;
-          const active = i === step;
+        {STEPS.map(({ key, label, failed, skipped }) => {
+          const state = progress[key];
+          const note = state === "failed" ? failed : state === "skipped" ? skipped : null;
           return (
             <li
-              key={label}
+              key={key}
               className={cn(
-                "flex items-center gap-3 text-[0.95rem] transition-colors duration-200",
-                done ? "text-foreground" : active ? "text-foreground" : "text-muted-foreground/60",
+                "flex items-start gap-3 text-[0.95rem] transition-colors duration-200",
+                state === "waiting" || state === "skipped" ? "text-muted-foreground/70" : "text-foreground",
               )}
             >
               <span
                 className={cn(
-                  "grid size-5 place-items-center rounded-full border transition-colors duration-200",
-                  done && "border-primary bg-primary text-primary-foreground",
-                  active && "animate-pulse border-primary",
+                  "mt-0.5 grid size-5 shrink-0 place-items-center rounded-full border transition-colors duration-200",
+                  state === "done" && "border-primary bg-primary text-primary-foreground",
+                  state === "working" && "animate-pulse border-primary",
+                  state === "failed" && "border-warning text-warning",
+                  state === "skipped" && "border-dashed",
                 )}
                 aria-hidden
               >
-                {done && <CheckIcon className="size-3" strokeWidth={3} />}
+                {state === "done" && <CheckIcon className="size-3" strokeWidth={3} />}
+                {state === "failed" && <XIcon className="size-3" strokeWidth={3} />}
               </span>
-              {label}
+              <span>
+                {label}
+                {note && <span className="block text-sm text-muted-foreground">{note}</span>}
+                <span className="sr-only">{state === "done" ? ", done" : state === "working" ? ", in progress" : ""}</span>
+              </span>
             </li>
           );
         })}
