@@ -2,26 +2,14 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef } from "react";
-import mapboxgl, { type GeoJSONSource, type Map as MapboxMap, type StyleSpecification } from "mapbox-gl";
+import mapboxgl, { type GeoJSONSource, type Map as MapboxMap } from "mapbox-gl";
 import type { CameraRequest, SurfaceProps } from "@/components/map/surface";
-import { appConfig } from "@/lib/config";
 import { boundsAround, boundsOfRadius, circlePolygon } from "@/lib/map/geo";
+import { accentFor, MAPBOX_TOKEN, mapConfig, mapStyle, usesStandardStyle } from "@/lib/map/mapbox-style";
 
 // The real map (brief 7.7): Mapbox GL with clustered pins loaded as GeoJSON
 // from /api/map. Each new map is a billed "map load", so one map is made per
 // session and moved between visits to the Map screen instead of re-created.
-
-const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
-// A Mapbox Studio style URL to use instead of Mapbox Standard. "blank" draws no
-// tiles at all, for tests and working without a connection.
-const STYLE = process.env.NEXT_PUBLIC_MAPBOX_STYLE;
-
-const BLANK: StyleSpecification = {
-  version: 8,
-  glyphs: "mapbox://fonts/mapbox/{fontstack}/{range}.pbf",
-  sources: {},
-  layers: [{ id: "background", type: "background", paint: { "background-color": "#e7ecea" } }],
-};
 
 const PEOPLE_LAYERS = ["clusters", "people"];
 
@@ -33,7 +21,7 @@ let handlers: Handlers | null = null;
 let overlay: Overlay = { selectedId: null, near: null };
 
 const dark = () => window.matchMedia("(prefers-color-scheme: dark)").matches;
-const accent = () => (dark() ? appConfig.accent.dark : appConfig.accent.light);
+const accent = () => accentFor(dark());
 const ink = () => (dark() ? "#0c0c0b" : "#ffffff");
 const pinsUrl = () => new URL("/api/map", window.location.origin).href;
 const empty = { type: "FeatureCollection" as const, features: [] };
@@ -135,13 +123,11 @@ function moveCamera(map: MapboxMap, { target }: CameraRequest, animate: boolean)
 function createMap() {
   const container = document.createElement("div");
   container.style.cssText = "position:absolute;inset:0";
-  mapboxgl.accessToken = TOKEN;
+  mapboxgl.accessToken = MAPBOX_TOKEN;
   const map = new mapboxgl.Map({
     container,
-    style: STYLE === "blank" ? BLANK : (STYLE ?? "mapbox://styles/mapbox/standard"),
-    // Mapbox Standard: day or night to match the app, without shop and
-    // restaurant labels competing with the pins.
-    config: STYLE ? undefined : { basemap: { lightPreset: dark() ? "night" : "day", showPointOfInterestLabels: false } },
+    style: mapStyle(),
+    config: mapConfig(dark()),
     center: [55.2, 25.1],
     zoom: 1.5,
     attributionControl: true,
@@ -171,7 +157,7 @@ function createMap() {
 
   // Follow the phone's light or dark mode.
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
-    if (!STYLE) map.setConfigProperty("basemap", "lightPreset", dark() ? "night" : "day");
+    if (usesStandardStyle) map.setConfigProperty("basemap", "lightPreset", dark() ? "night" : "day");
     if (!map.getSource("people")) return;
     for (const layer of ["clusters", "people", "person-selected"]) {
       map.setPaintProperty(layer, "circle-color", accent());

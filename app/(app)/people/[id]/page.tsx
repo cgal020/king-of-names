@@ -129,7 +129,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
           {p.lat !== null ? (
             <>
               {[place, p.country].filter(Boolean).join(" · ")}
-              {p.location_accuracy_m && <> &middot; GPS within {Math.round(p.location_accuracy_m)} m</>}
+              {p.location_accuracy_m ? <> &middot; GPS within {Math.round(p.location_accuracy_m)} m</> : <> &middot; pin placed by hand</>}
             </>
           ) : (
             <>{[p.city, p.country].filter(Boolean).join(", ")} &middot; city set by hand</>

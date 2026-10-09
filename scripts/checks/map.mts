@@ -79,6 +79,42 @@ try {
   await expect(page.getByRole("heading", { name: /^Trip to / })).toBeVisible();
   pass("Trip mode opens");
 
+  // Review: move the pin under a fixed centre pin.
+  await page.goto(BASE + "/capture/review", { waitUntil: "networkidle" });
+  if (MAPBOX) {
+    await expect(page.locator("picture img[src*=\"api.mapbox.com/styles/v1/mapbox/light-v11/static/\"]")).toHaveCount(1);
+    pass("Review shows a still Mapbox image, not a live map");
+  }
+  await expect(page.getByText("Pin placed by hand")).toHaveCount(0);
+  await page.getByRole("button", { name: "Move pin" }).click();
+  const mover = page.getByRole("dialog", { name: "Move the pin" });
+  await expect(mover).toBeVisible();
+  if (MAPBOX) await page.waitForFunction(() => Boolean((window as unknown as { __kingPinMap?: unknown }).__kingPinMap), null, { timeout: 15000 });
+  const pinMapCenter = () =>
+    page.evaluate(() => (window as unknown as { __kingPinMap?: { getCenter: () => { lat: number; lng: number } } }).__kingPinMap?.getCenter() ?? null);
+  const before = MAPBOX ? await pinMapCenter() : null;
+  const area = (await mover.locator(MAPBOX ? "canvas" : "[aria-label^=\"Map. Drag\"]").first().boundingBox())!;
+  await page.mouse.move(area.x + area.width / 2, area.y + area.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(area.x + area.width / 2 - 80, area.y + area.height / 2 + 60, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  if (SHOTS) await page.screenshot({ path: SHOTS + `/pin-mover${MAPBOX ? "-mapbox" : ""}.png` });
+  if (MAPBOX) {
+    const after = await pinMapCenter();
+    expect(after!.lng).toBeGreaterThan(before!.lng);
+    expect(after!.lat).toBeGreaterThan(before!.lat);
+  }
+  await mover.getByRole("button", { name: "Use this spot" }).click();
+  await expect(mover).toHaveCount(0);
+  await expect(page.getByText("Pin placed by hand")).toBeVisible();
+  pass("Move pin: drag the map under the pin, and the spot is marked as placed by hand");
+
+  await page.getByRole("button", { name: "Move pin" }).click();
+  await page.getByRole("dialog", { name: "Move the pin" }).getByRole("button", { name: "Cancel" }).click();
+  await expect(page.getByRole("dialog", { name: "Move the pin" })).toHaveCount(0);
+  pass("Cancel closes the pin mover");
+
   if (errors.length) out.push("INFO page errors: " + errors.slice(0, 3).join(" | ").slice(0, 400));
   await context.close();
 } catch (e) {

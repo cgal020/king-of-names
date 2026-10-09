@@ -20,6 +20,7 @@ import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { distanceKm, formatDistance, formatMetDate } from "@/lib/format";
 import type { LatLng } from "@/lib/map/geo";
+import { hasMapbox } from "@/lib/map/mapbox-style";
 import { getMockPerson, mockCurrentLocation, mockLaterMeetings } from "@/lib/mock/people";
 import type { Person } from "@/lib/types";
 import { nextBirthday } from "@/lib/upcoming";
@@ -31,7 +32,6 @@ const MapboxSurface = dynamic(() => import("@/components/map/mapbox-map"), {
   ssr: false,
   loading: () => <div className="absolute inset-0 bg-[color-mix(in_oklch,var(--primary)_7%,var(--muted))]" />,
 });
-const HAS_MAPBOX = Boolean(process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
 
 type Mode =
   | { kind: "cities" }
@@ -144,7 +144,7 @@ export function MapScreen({ people }: { people: Person[] }) {
   return (
     <main className="fixed inset-x-0 top-6 bottom-(--tabbar-h) flex flex-col">
       <div className="relative flex-1 overflow-hidden">
-        {HAS_MAPBOX ? <MapboxSurface {...surface} /> : <StandInMap {...surface} />}
+        {hasMapbox() ? <MapboxSurface {...surface} /> : <StandInMap {...surface} />}
 
         <div className="pointer-events-none absolute top-3 right-3 left-3 flex justify-between gap-2 pt-[env(safe-area-inset-top)]">
           <div className="pointer-events-auto flex gap-2">

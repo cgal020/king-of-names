@@ -9,6 +9,7 @@ import { useCardResult } from "@/components/capture/card-store";
 import { useRecording } from "@/components/capture/recording-store";
 import { ConfirmButton } from "@/components/confirm-button";
 import { MiniMap } from "@/components/map/mini-map";
+import { PinMover } from "@/components/map/pin-mover";
 import { OriginalNote } from "@/components/original-note";
 import { PhotoStrip } from "@/components/photos/photo-strip";
 import { usePhotos, usePhotosFor } from "@/components/photos/photo-store";
@@ -70,6 +71,22 @@ function toLocalInput(iso: string, timeZone: string | null) {
   return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
 }
 
+// Display-only place name for a pin moved by hand (see /api/geocode).
+async function lookUpPlace(at: { lat: number; lng: number }) {
+  try {
+    const response = await fetch("/api/geocode", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(at),
+    });
+    if (!response.ok) return null;
+    const json: { place: { placeName: string | null; city: string | null } | null } = await response.json();
+    return json.place;
+  } catch {
+    return null;
+  }
+}
+
 function cityCenter(city: string) {
   const inCity = mockPeople.filter((p) => p.city === city && p.lat !== null && p.lng !== null);
   if (!inCity.length) return null;
@@ -116,6 +133,7 @@ export function PersonForm({
   const tagSuggestions = useMemo(() => knownTags(mockPeople), []);
   const [duplicateChoice, setDuplicateChoice] = useState<"new" | string>("new");
   const [changingCity, setChangingCity] = useState(false);
+  const [movingPin, setMovingPin] = useState(false);
 
   const set = <K extends keyof typeof values>(key: K, value: (typeof values)[K]) =>
     setValues((v) => ({ ...v, [key]: value }));
@@ -234,24 +252,47 @@ export function PersonForm({
 
           <div>
             <MiniMap lat={values.lat} lng={values.lng} />
-            <div className="mt-2 flex items-center justify-between gap-3">
-              <p className="min-w-0 text-[0.95rem]">
-                <span className="font-medium">
-                  {[values.place_name, values.city].filter(Boolean).join(", ") || "No city yet"}
-                </span>
-                {values.country && <span className="text-muted-foreground"> &middot; {values.country}</span>}
-              </p>
+            <p className="mt-2 min-w-0 text-[0.95rem]">
+              <span className="font-medium">
+                {[values.place_name, values.city].filter(Boolean).join(", ") || "No city yet"}
+              </span>
+              {values.country && <span className="text-muted-foreground"> &middot; {values.country}</span>}
+              {values.lat !== null && values.location_accuracy_m === null && (
+                <span className="block text-sm text-muted-foreground">Pin placed by hand</span>
+              )}
+            </p>
+            <div className="-ml-3 flex">
+              {values.lat !== null && values.lng !== null && (
+                <Button type="button" variant="ghost" size="touch" className="text-primary" onClick={() => setMovingPin(true)}>
+                  Move pin
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="ghost"
                 size="touch"
-                className="-mr-3 shrink-0 text-primary"
+                className="text-primary"
                 onClick={() => setChangingCity((c) => !c)}
                 aria-expanded={changingCity}
               >
-                {values.city ? "Change" : "Set city"}
+                {values.city ? "Change city" : "Set city"}
               </Button>
             </div>
+            {movingPin && values.lat !== null && values.lng !== null && (
+              <PinMover
+                start={{ lat: values.lat, lng: values.lng }}
+                onCancel={() => setMovingPin(false)}
+                onDone={(at) => {
+                  setMovingPin(false);
+                  // Placed by hand, so no GPS accuracy. The place name shown
+                  // here is a free lookup; saving looks it up again to keep.
+                  setValues((v) => ({ ...v, lat: at.lat, lng: at.lng, location_accuracy_m: null }));
+                  void lookUpPlace(at).then((place) => {
+                    if (place) setValues((v) => ({ ...v, place_name: place.placeName, city: place.city ?? v.city }));
+                  });
+                }}
+              />
+            )}
             {changingCity && (
               <select
                 aria-label="City"
@@ -267,6 +308,8 @@ export function PersonForm({
                     place_name: null,
                     lat: center?.lat ?? null,
                     lng: center?.lng ?? null,
+                    // The city's centre, not a GPS reading.
+                    location_accuracy_m: null,
                   }));
                   setChangingCity(false);
                 }}

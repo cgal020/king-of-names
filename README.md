@@ -116,7 +116,7 @@ Then ask Claude something like "Who are my investors in Dubai?". Claude.ai and C
 
 ## Map
 
-The Map uses Mapbox GL JS when `NEXT_PUBLIC_MAPBOX_TOKEN` is set, and a drawn stand-in otherwise. Pins come as GeoJSON from `/api/map`. One map is made per session and reused between visits, because each new map is a billed load.
+The Map uses Mapbox GL JS when `NEXT_PUBLIC_MAPBOX_TOKEN` is set, and a drawn stand-in otherwise. Pins come as GeoJSON from `/api/map`. One map is made per session and reused between visits, because each new map is a billed load. The small maps on Review and profiles are still images (Static Images API), and Review's "Move pin" opens a live map only while it is in use.
 
 Mapbox needs two tokens:
 
