@@ -65,9 +65,11 @@ try {
   const personId = page.url().split("/").pop()!;
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByText(/Dubai/).first()).toBeVisible();
-  const { data: row } = await admin.from("people").select("user_id, city, lat, met_timezone").eq("id", personId).single();
+  const { data: row } = await admin.from("people").select("user_id, city, place_name, lat, met_timezone").eq("id", personId).single();
   expect(row?.user_id).toBe(userId);
   expect(row?.city).toBe("Dubai");
+  // The name people use, not Mapbox's official "Marsa Dubai".
+  expect(row?.place_name).not.toBe("Marsa Dubai");
   expect(row?.lat).toBeCloseTo(25.08, 2);
   expect(row?.met_timezone).toBeTruthy();
   pass("adding someone saves them to the database, owned by this account, with the place looked up");
@@ -106,6 +108,17 @@ try {
   await page.getByLabel("Search people").fill("flamingo");
   await expect(page.getByRole("link", { name: new RegExp(name) })).toBeVisible();
   pass("search finds them by a word only in their notes");
+
+  // From Cameron's audit: company, role and phone numbers weren't searched.
+  await admin.from("people").update({ phone: "+971505550199", extras: { company: "Pinkwater Trading", role: "COO" } }).eq("id", personId);
+  await page.reload({ waitUntil: "networkidle" });
+  for (const query of ["Pinkwater", "coo", "050 555 0199"]) {
+    await page.getByLabel("Search people").fill(query);
+    await expect(page.getByRole("link", { name: new RegExp(name) }), query).toBeVisible();
+  }
+  await page.getByLabel("Search people").fill("Pinkwater Manila");
+  await expect(page.getByRole("link", { name: new RegExp(name) })).toHaveCount(0);
+  pass("search also finds them by company, role and phone number");
 
   await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
   await page.getByLabel("Your question").fill("Who breeds flamingos?");

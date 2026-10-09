@@ -10,8 +10,9 @@ import { PersonAvatar } from "@/components/photos/person-avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { looksLikeQuestion } from "@/lib/ask/question";
 import { firstLine, formatMetDate, formatMonthGroup } from "@/lib/format";
+import { matchesSearch, searchEntry } from "@/lib/people/search";
 import { knownTags, relationshipLabel, type Relationship } from "@/lib/tags";
-import type { Person } from "@/lib/types";
+import type { Encounter, Person } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 const WHEN_OPTIONS = [
@@ -24,11 +25,6 @@ const WHEN_OPTIONS = [
 
 type When = (typeof WHEN_OPTIONS)[number]["value"];
 
-// Case- and accent-insensitive, so "jose" finds "José".
-function fold(text: string) {
-  return text.normalize("NFKD").replace(/\p{M}/gu, "").toLowerCase();
-}
-
 function matchesWhen(iso: string, when: When) {
   if (!when) return true;
   const date = new Date(iso);
@@ -40,7 +36,7 @@ function matchesWhen(iso: string, when: When) {
   return date.getFullYear() < year - 1;
 }
 
-export function PeopleList({ people }: { people: Person[] }) {
+export function PeopleList({ people, laterMeetings = [] }: { people: Person[]; laterMeetings?: Encounter[] }) {
   const [query, setQuery] = useState("");
   const [city, setCity] = useState("");
   const [country, setCountry] = useState("");
@@ -62,8 +58,10 @@ export function PeopleList({ people }: { people: Person[] }) {
   const countries = useMemo(() => uniqueSorted(people.map((p) => p.country)), [people]);
   const tags = useMemo(() => knownTags(people).filter((t) => people.some((p) => p.tags.includes(t))), [people]);
 
+  // What search looks through for each person, built once per list.
+  const index = useMemo(() => new Map(people.map((p) => [p.id, searchEntry(p, laterMeetings)])), [people, laterMeetings]);
+
   const results = useMemo(() => {
-    const terms = fold(query).split(/\s+/).filter(Boolean);
     return people
       .filter((p) => {
         if (city && p.city !== city) return false;
@@ -72,13 +70,10 @@ export function PeopleList({ people }: { people: Person[] }) {
         // "Both" counts as business and as personal.
         if (type && p.relationship !== type && p.relationship !== "both") return false;
         if (tag && !p.tags.includes(tag)) return false;
-        const haystack = fold(
-          [p.full_name, p.notes, p.where_met_text, p.place_name, p.city, ...p.tags].filter(Boolean).join(" "),
-        );
-        return terms.every((t) => haystack.includes(t));
+        return matchesSearch(index.get(p.id)!, query);
       })
       .sort((a, b) => b.met_at.localeCompare(a.met_at));
-  }, [people, query, city, country, when, type, tag]);
+  }, [people, index, query, city, country, when, type, tag]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Person[]>();

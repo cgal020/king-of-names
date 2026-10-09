@@ -1,6 +1,7 @@
 // Turns a Mapbox Geocoding v6 reverse response into the place fields we store.
 // v6 has no venues (POIs), so the place is the neighbourhood or street; the
 // venue comes from what the user said ("the rooftop bar at Soho House").
+import { commonPlaceName } from "@/lib/geo/places";
 
 export type Place = {
   place_name: string | null;
@@ -30,9 +31,11 @@ export function parseReverseGeocode(json: unknown): Place | null {
   if (type && props.name && !ctx[type]) ctx[type] = { name: props.name };
 
   const city = ctx.place?.name ?? ctx.locality?.name ?? ctx.district?.name ?? null;
-  const area = [ctx.neighborhood?.name, ctx.locality?.name, ctx.street?.name, ctx.address?.name].find(
-    (n) => n && n !== city,
-  );
+  // The name people use for the area (lib/geo/places.ts); an official name
+  // that means nothing to anyone falls through to the street.
+  const area = [ctx.neighborhood?.name, ctx.locality?.name, ctx.street?.name, ctx.address?.name]
+    .map((n) => commonPlaceName(n ?? null))
+    .find((n) => n && n !== city);
 
   return {
     place_name: area ?? null,
