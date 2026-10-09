@@ -190,7 +190,7 @@ Please design: the tag editor on Review (it must stay a glance, not a form), the
 - **Met again**: every meeting with a person on a timeline; recording from a profile adds a meeting instead of overwriting notes (screens 28, 29).
 - **Coming up** on People: birthdays and follow-ups, overdue first. This is also the fallback for push reminders, which iOS only delivers to installed apps (screen 30).
 - **Trip mode** on the Map (screen 31).
-- **My card**: your own QR in Settings; the details sit in the code, so it scans without internet.
+- **My QR codes** (replaced My card on 9 Oct): several codes, each for a contact card, WhatsApp, LinkedIn, Instagram or a link, repointable after printing, with scan counts. One tap from Capture; made in Settings.
 - **Import contacts** from a .vcf file or, on Android, the phone's contact picker, with a preview first.
 - **AI consent** before the first recording (screen 27) and a **privacy pledge** in Settings.
 - **Claude and ChatGPT connector** (screen 32): people can ask the assistant they already use about their own contacts. Read only, off by default.

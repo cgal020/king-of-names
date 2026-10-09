@@ -109,6 +109,12 @@ Creates a throwaway account in the Supabase project from `.env.local`, signs in 
 npm run check:notes
 ```
 
+```bash
+npm run check:qr
+```
+
+QR codes: makes a WhatsApp and a contact card code, decodes the drawn code with Chrome's barcode reader, scans as a signed-out visitor, repoints a code and deletes one.
+
 The same for voice notes, with a fake microphone: upload, processing, review, save, "Met again", discard, an Event Mode take, and deleting a person with their recordings. Without an OpenAI key it checks the "couldn't transcribe" path.
 
 ## Claude and ChatGPT connector (MCP)

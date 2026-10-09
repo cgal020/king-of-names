@@ -13,6 +13,7 @@ import {
   PartyPopperIcon,
   PencilLineIcon,
   ScanLineIcon,
+  QrCodeIcon,
   SettingsIcon,
 } from "lucide-react";
 import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
@@ -291,13 +292,15 @@ export function CaptureScreen() {
     <main className="mx-auto flex min-h-[calc(100dvh-var(--tabbar-h)-1.5rem)] max-w-xl flex-col px-5">
       <header className="flex min-h-14 items-center justify-between pt-[env(safe-area-inset-top)]">
         <Wordmark />
-        <Link
-          href="/settings"
-          aria-label="Settings"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-touch" }), "-mr-2 text-muted-foreground")}
-        >
-          <SettingsIcon />
-        </Link>
+        <span className="-mr-2 flex items-center">
+          {/* Your QR codes, one tap away when someone asks for your details. */}
+          <Link href="/qr" aria-label="My QR codes" className={cn(buttonVariants({ variant: "ghost", size: "icon-touch" }), "text-muted-foreground")}>
+            <QrCodeIcon />
+          </Link>
+          <Link href="/settings" aria-label="Settings" className={cn(buttonVariants({ variant: "ghost", size: "icon-touch" }), "text-muted-foreground")}>
+            <SettingsIcon />
+          </Link>
+        </span>
       </header>
       {/* Kept in the layout while recording so the heading does not jump. */}
       <div className={cn(phase !== "idle" && "invisible")}>

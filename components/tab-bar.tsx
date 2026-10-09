@@ -16,7 +16,7 @@ const TABS = [
 // Screens with their own action bar, where the tab bar would only stack on
 // top of it: Review (and the same form for adding and editing), the card
 // scanner and Event Mode review.
-const HIDDEN_ON = [/^\/capture\/(review|card|event)/, /^\/people\/new/, /^\/people\/[^/]+\/edit/];
+const HIDDEN_ON = [/^\/capture\/(review|card|event)/, /^\/people\/new/, /^\/people\/[^/]+\/edit/, /^\/qr/, /^\/settings\/qr\//];
 
 // Capture hides the bar while recording, so nothing competes with Stop.
 let recording = false;

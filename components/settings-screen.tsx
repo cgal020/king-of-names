@@ -1,22 +1,34 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { ChevronDownIcon, CopyIcon } from "lucide-react";
 import { AccountActions } from "@/components/settings/account-actions";
 import { AiConnectors } from "@/components/settings/ai-connectors";
 import { ExportButtons } from "@/components/settings/export-buttons";
 import { ImportContacts } from "@/components/settings/import-contacts";
-import { MyCard } from "@/components/settings/my-card";
-import { Button } from "@/components/ui/button";
+import { PurposeMark } from "@/components/qr/designed-qr";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { createInvite } from "@/app/actions/settings";
 import { appConfig } from "@/lib/config";
 import type { Account, Invite } from "@/lib/data/account";
+import { destinationSummary, type QrCode } from "@/lib/qr/codes";
 import { formatShortDate } from "@/lib/format";
 import { knownTags } from "@/lib/tags";
 import type { Person } from "@/lib/types";
 
-export function SettingsScreen({ account, invites, people }: { account: Account; invites: Invite[]; people: Person[] }) {
+export function SettingsScreen({
+  account,
+  invites,
+  people,
+  qrCodes,
+}: {
+  account: Account;
+  invites: Invite[];
+  people: Person[];
+  qrCodes: QrCode[];
+}) {
   const [codes, setCodes] = useState(invites);
   const [making, setMaking] = useState(false);
   // Tags in use with how many people carry each.
@@ -58,18 +70,36 @@ export function SettingsScreen({ account, invites, people }: { account: Account;
       </Section>
 
       <Section
-        title="My card"
-        description="Let people scan you. Your details sit inside the code, so it works without internet."
+        id="qr"
+        title="My QR codes"
+        description="Codes for your contact card, WhatsApp, LinkedIn, Instagram or any link. Change where one goes at any time, even after it's printed."
       >
-        <MyCard
-          initial={{
-            full_name: account.displayName ?? "",
-            company: "",
-            role: "",
-            phone: "",
-            email: account.email ?? "",
-          }}
-        />
+        {qrCodes.length > 0 && (
+          <ul className="divide-y border-y">
+            {qrCodes.map((code) => (
+              <li key={code.id}>
+                <Link href={`/settings/qr/${code.id}`} className="flex min-h-16 items-center gap-3 py-2.5">
+                  <PurposeMark purpose={code.destination.purpose} />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{code.label}</span>
+                    <span className="block truncate text-sm text-muted-foreground">{destinationSummary(code.destination)}</span>
+                  </span>
+                  <span className="shrink-0 text-sm text-muted-foreground tabular-nums">
+                    {code.scanCount === 1 ? "1 scan" : `${code.scanCount} scans`}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Link href="/settings/qr/new" className={buttonVariants({ variant: "outline", size: "touch-lg" })}>
+            New QR code
+          </Link>
+          <Link href="/qr" className={buttonVariants({ variant: "outline", size: "touch-lg" })}>
+            Show my codes
+          </Link>
+        </div>
       </Section>
 
       <Section
@@ -202,16 +232,18 @@ export function SettingsScreen({ account, invites, people }: { account: Account;
 }
 
 function Section({
+  id,
   title,
   description,
   children,
 }: {
+  id?: string;
   title: string;
   description?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section>
+    <section id={id} className="scroll-mt-6">
       <h2 className="type-section">{title}</h2>
       {description && <p className="mt-1 text-[0.95rem] text-muted-foreground">{description}</p>}
       <div className="mt-3">{children}</div>

@@ -1,7 +1,8 @@
 // Which pages need a signed-in user. Everything does except the sign-in
-// screens, the reset-link handler and the offline page. The Claude/ChatGPT
-// connector checks its own OAuth tokens instead of a browser session.
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password", "/auth", "/offline", "/api/mcp"];
+// screens, the reset-link handler, the offline page and the /q pages your QR
+// codes open, which are for whoever scans them. The Claude/ChatGPT connector
+// checks its own OAuth tokens instead of a browser session.
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/reset-password", "/auth", "/offline", "/q", "/api/mcp"];
 const SIGNED_OUT_ONLY = ["/login", "/signup"];
 
 const matches = (path: string, prefixes: string[]) => prefixes.some((p) => path === p || path.startsWith(`${p}/`));
