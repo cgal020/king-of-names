@@ -107,7 +107,7 @@ export function SettingsScreen({
         title="Import contacts"
         description="Start with people you already know. You'll see a preview before anything is added."
       >
-        <ImportContacts />
+        <ImportContacts people={people} />
       </Section>
 
       <Section

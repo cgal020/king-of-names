@@ -130,18 +130,43 @@ export async function addMeeting(
   const place = at ? await reverseGeocode(at.lat, at.lng).catch(() => null) : null;
 
   const supabase = await createClient();
+  // For someone imported from contacts this is the first real meeting: it
+  // becomes when and where you met.
+  const { data: person } = await supabase.from("people").select("imported_at").eq("id", personId).maybeSingle();
+  if (!person) return { ok: false, error: "That person no longer exists." };
+  const first = Boolean(person.imported_at);
+  const recordedAt = new Date().toISOString();
   const { error } = await supabase.from("captures").insert({
     person_id: personId,
     transcript: text,
-    recorded_at: new Date().toISOString(),
+    recorded_at: recordedAt,
     recorded_timezone: timeZone,
     lat: at?.lat ?? null,
     lng: at?.lng ?? null,
     location_accuracy_m: at?.accuracyM ?? null,
     geocode: place,
     status: "confirmed",
+    first_meeting: first,
   });
   if (error) return { ok: false, error: NOT_SAVED };
+  if (first) {
+    await supabase
+      .from("people")
+      .update({
+        imported_at: null,
+        met_at: recordedAt,
+        met_timezone: timeZone,
+        lat: at?.lat ?? null,
+        lng: at?.lng ?? null,
+        location_accuracy_m: at?.accuracyM ?? null,
+        place_name: place?.place_name ?? null,
+        city: place?.city ?? null,
+        region: place?.region ?? null,
+        country: place?.country ?? null,
+      })
+      .eq("id", personId);
+    revalidatePath("/people");
+  }
   revalidatePath(`/people/${personId}`);
   return { ok: true, place: place && { place_name: place.place_name, city: place.city } };
 }

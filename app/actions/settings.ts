@@ -5,13 +5,15 @@
 import { revalidatePath } from "next/cache";
 import { authConfigured } from "@/lib/auth/config";
 import type { CardDetails } from "@/lib/cards/parse-qr";
+import { fillsAnything, matchContact, missingDetails, type Fill } from "@/lib/contacts/match";
 import { currentUserId } from "@/lib/data/account";
 import { listMeetings, listPeople } from "@/lib/data/people";
 import type { ExportPerson } from "@/lib/export/people";
 import { generateInviteCode } from "@/lib/invite-code";
-import { PersonInputSchema } from "@/lib/people/validate";
+import { isPersonId, PersonInputSchema, type PersonInput } from "@/lib/people/validate";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import type { Person } from "@/lib/types";
 
 // Enough to invite a few people at once, not enough to hand out codes in bulk.
 const MAX_UNUSED_INVITES = 5;
@@ -44,8 +46,8 @@ export async function exportPeople(): Promise<ExportPerson[]> {
   return Promise.all(people.map(async (person) => ({ ...person, meetings: await listMeetings(person) })));
 }
 
-// A contact becomes a person met "now", with no place, since the file
-// doesn't say where you met.
+// A contact becomes a person with no place, dated with the import: the file
+// doesn't say when or where you met, so the app shows them as imported.
 function fromContact(c: CardDetails, metAt: string, timeZone: string | null) {
   const extras: Record<string, string> = {};
   if (c.emails[0]) extras.email = c.emails[0];
@@ -80,30 +82,91 @@ function fromContact(c: CardDetails, metAt: string, timeZone: string | null) {
   };
 }
 
-export async function importContacts(
-  contacts: CardDetails[],
-  timeZone: string | null,
-): Promise<{ ok: true; count: number; skipped: number } | { ok: false; error: string }> {
+export type ImportResult =
+  | {
+      ok: true;
+      added: number;
+      updated: number;
+      skipped: number;
+      // What Undo needs: this import's time, and the details it filled in on
+      // people who were already saved.
+      undo: { batch: string; filled: { id: string; phone: boolean; birthday: boolean; extras: string[] }[] } | null;
+    }
+  | { ok: false; error: string };
+
+// Imports contacts, matching people already saved (lib/contacts/match.ts):
+// a match only gets its empty details filled in; everyone else is added,
+// marked as imported, since the file doesn't say when or where you met.
+export async function importContacts(contacts: CardDetails[], timeZone: string | null): Promise<ImportResult> {
   if (!Array.isArray(contacts) || contacts.length === 0) return { ok: false, error: "No contacts to import." };
   if (contacts.length > MAX_IMPORT) return { ok: false, error: `Import up to ${MAX_IMPORT} contacts at a time.` };
 
-  const now = new Date().toISOString();
-  const rows = contacts.flatMap((c) => {
-    try {
-      const parsed = PersonInputSchema.safeParse(fromContact(c, now, timeZone));
-      return parsed.success ? [parsed.data] : [];
-    } catch {
-      // Not the shape the import sends: skip it.
-      return [];
+  const batch = new Date().toISOString();
+  const named = contacts.filter((c) => typeof c?.full_name === "string" && c.full_name.trim() && Array.isArray(c.phones) && Array.isArray(c.emails));
+  const skipped = contacts.length - named.length;
+  if (!named.length) return { ok: false, error: "None of those contacts had a name." };
+
+  const people = await listPeople();
+  const rows: PersonInput[] = [];
+  const fills: { person: Person; fill: Fill }[] = [];
+  for (const contact of named) {
+    const existing = matchContact(contact, people);
+    if (existing) {
+      const fill = missingDetails(contact, existing);
+      if (fillsAnything(fill) && !fills.some((f) => f.person.id === existing.id)) fills.push({ person: existing, fill });
+      continue;
     }
-  });
-  const skipped = contacts.length - rows.length;
-  if (!authConfigured()) return { ok: true, count: rows.length, skipped };
-  if (!rows.length) return { ok: false, error: "None of those contacts had a name." };
+    const parsed = PersonInputSchema.safeParse(fromContact(contact, batch, timeZone));
+    if (parsed.success && !rows.some((r) => r.full_name === parsed.data.full_name && r.phone === parsed.data.phone)) rows.push(parsed.data);
+  }
+  if (!authConfigured()) return { ok: true, added: rows.length, updated: fills.length, skipped, undo: null };
 
   const supabase = await createClient();
-  const { error } = await supabase.from("people").insert(rows);
-  if (error) return { ok: false, error: "The import didn’t save. Check your connection and try again." };
+  if (rows.length) {
+    const { error } = await supabase.from("people").insert(rows.map((r) => ({ ...r, imported_at: batch })));
+    if (error) return { ok: false, error: "The import didn’t save. Check your connection and try again." };
+  }
+  const filled: { id: string; phone: boolean; birthday: boolean; extras: string[] }[] = [];
+  for (const { person, fill } of fills) {
+    const { error } = await supabase
+      .from("people")
+      .update({
+        ...(fill.phone ? { phone: fill.phone } : {}),
+        ...(fill.birthday
+          ? { birthday_day: fill.birthday.day, birthday_month: fill.birthday.month, birthday_year: fill.birthday.year }
+          : {}),
+        extras: { ...person.extras, ...fill.extras },
+      })
+      .eq("id", person.id);
+    if (!error) filled.push({ id: person.id, phone: Boolean(fill.phone), birthday: Boolean(fill.birthday), extras: Object.keys(fill.extras) });
+  }
   revalidatePath("/people");
-  return { ok: true, count: rows.length, skipped };
+  return { ok: true, added: rows.length, updated: filled.length, skipped, undo: { batch, filled } };
+}
+
+// Undoes one import: removes the people it added (unless they've been met
+// since) and empties the details it filled in on people already saved.
+export async function undoImport(undo: NonNullable<Extract<ImportResult, { ok: true }>["undo"]>): Promise<{ ok: boolean }> {
+  if (!authConfigured()) return { ok: true };
+  if (!undo || typeof undo.batch !== "string" || Number.isNaN(Date.parse(undo.batch))) return { ok: false };
+  const supabase = await createClient();
+  const { error } = await supabase.from("people").delete().eq("imported_at", undo.batch);
+  if (error) return { ok: false };
+  for (const f of Array.isArray(undo.filled) ? undo.filled.slice(0, MAX_IMPORT) : []) {
+    if (!isPersonId(f.id)) continue;
+    const { data: person } = await supabase.from("people").select("extras").eq("id", f.id).maybeSingle();
+    if (!person) continue;
+    const extras = { ...(person.extras as Record<string, string>) };
+    for (const key of f.extras ?? []) delete extras[key];
+    await supabase
+      .from("people")
+      .update({
+        ...(f.phone ? { phone: null } : {}),
+        ...(f.birthday ? { birthday_day: null, birthday_month: null, birthday_year: null } : {}),
+        extras,
+      })
+      .eq("id", f.id);
+  }
+  revalidatePath("/people");
+  return { ok: true };
 }

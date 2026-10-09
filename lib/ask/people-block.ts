@@ -19,7 +19,9 @@ export function peopleBlock(people: Person[], laterMeetings: Encounter[]): { tex
       const fields = [
         `ref: ${ref}`,
         `name: ${p.full_name}`,
-        `first met: ${p.met_at.slice(0, 10)}${[p.place_name, p.city, p.country].filter(Boolean).length ? ` at ${[p.place_name, p.city, p.country].filter(Boolean).join(", ")}` : ""}`,
+        p.imported_at
+          ? "first met: unknown (imported from contacts)"
+          : `first met: ${p.met_at.slice(0, 10)}${[p.place_name, p.city, p.country].filter(Boolean).length ? ` at ${[p.place_name, p.city, p.country].filter(Boolean).join(", ")}` : ""}`,
         p.where_met_text && `where, in their words: ${clip(p.where_met_text, 120)}`,
         (p.extras.role || p.extras.company) && `work: ${[p.extras.role, p.extras.company].filter(Boolean).join(", ")}`,
         p.relationship && `relationship: ${p.relationship}`,

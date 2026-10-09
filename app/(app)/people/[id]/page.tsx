@@ -59,7 +59,9 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         <p className="mt-2 flex gap-1.5 text-[0.9375rem] text-muted-foreground">
           <CalendarIcon className="mt-[3px] size-4 shrink-0" aria-hidden />
           <span>
-          {meetings.length > 1 ? (
+          {meetings.length === 0 ? (
+            <>Imported from your contacts {formatShortDate(p.imported_at!.slice(0, 10))}. Add where you met when you next see them.</>
+          ) : meetings.length > 1 ? (
             <>
               Last met {formatMetDate(latest.met_at, latest.met_timezone)}
               {latest.city && <> in {latest.city}</>} &middot; first met {formatMetDate(p.met_at, p.met_timezone)}
@@ -134,20 +136,25 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </dl>
       )}
 
-      <section className="mt-8">
-        <h2 className="type-section mb-2">Where you met</h2>
-        <MiniMap lat={p.lat} lng={p.lng} />
-        <p className="mt-2 text-sm text-muted-foreground">
-          {p.lat !== null ? (
-            <>
-              {[place, p.country].filter(Boolean).join(" · ")}
-              {p.location_accuracy_m ? <> &middot; GPS within {Math.round(p.location_accuracy_m)} m</> : <> &middot; pin placed by hand</>}
-            </>
-          ) : (
-            <>{[p.city, p.country].filter(Boolean).join(", ")} &middot; city set by hand</>
-          )}
-        </p>
-      </section>
+      {/* Someone imported from contacts hasn't been met yet. */}
+      {!p.imported_at && (
+        <section className="mt-8">
+          <h2 className="type-section mb-2">Where you met</h2>
+          <MiniMap lat={p.lat} lng={p.lng} />
+          <p className="mt-2 text-sm text-muted-foreground">
+            {p.lat !== null ? (
+              <>
+                {[place, p.country].filter(Boolean).join(" · ")}
+                {p.location_accuracy_m ? <> &middot; GPS within {Math.round(p.location_accuracy_m)} m</> : <> &middot; pin placed by hand</>}
+              </>
+            ) : p.city || p.country ? (
+              <>{[p.city, p.country].filter(Boolean).join(", ")} &middot; city set by hand</>
+            ) : (
+              <>No place yet. Edit to add the city.</>
+            )}
+          </p>
+        </section>
+      )}
 
       <MeetingTimeline personId={p.id} initial={meetings} />
 

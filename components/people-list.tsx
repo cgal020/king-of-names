@@ -66,19 +66,22 @@ export function PeopleList({ people, laterMeetings = [] }: { people: Person[]; l
       .filter((p) => {
         if (city && p.city !== city) return false;
         if (country && p.country !== country) return false;
+        // Imported people have no meeting date to filter by.
+        if (when && p.imported_at) return false;
         if (!matchesWhen(p.met_at, when)) return false;
         // "Both" counts as business and as personal.
         if (type && p.relationship !== type && p.relationship !== "both") return false;
         if (tag && !p.tags.includes(tag)) return false;
         return matchesSearch(index.get(p.id)!, query);
       })
-      .sort((a, b) => b.met_at.localeCompare(a.met_at));
+      // Imported people, with no real meeting date, come after everyone met.
+      .sort((a, b) => Number(Boolean(a.imported_at)) - Number(Boolean(b.imported_at)) || b.met_at.localeCompare(a.met_at));
   }, [people, index, query, city, country, when, type, tag]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Person[]>();
     for (const p of results) {
-      const key = formatMonthGroup(p.met_at);
+      const key = p.imported_at ? "Imported from contacts" : formatMonthGroup(p.met_at);
       map.set(key, [...(map.get(key) ?? []), p]);
     }
     return [...map.entries()];
@@ -228,7 +231,9 @@ function PersonRow({ person: p }: { person: Person }) {
           <bdi dir="auto" className="type-name-list line-clamp-2 min-w-0 flex-1">
             {p.full_name}
           </bdi>
-          <span className="shrink-0 text-[0.8125rem] text-muted-foreground">{formatMetDate(p.met_at, p.met_timezone)}</span>
+          <span className="shrink-0 text-[0.8125rem] text-muted-foreground">
+            {p.imported_at ? "Imported" : formatMetDate(p.met_at, p.met_timezone)}
+          </span>
         </span>
         <span className="block truncate text-sm text-muted-foreground">
           {p.city && <span className="text-foreground">{p.city}</span>}

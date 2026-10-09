@@ -24,6 +24,9 @@ export type Person = {
   tags: string[];
   created_at: string;
   updated_at: string;
+  // Set when they came in from a contacts import: met_at is then the import
+  // time, not a real meeting, until one is recorded or set by hand.
+  imported_at?: string | null;
 };
 
 export type PersonExtras = {

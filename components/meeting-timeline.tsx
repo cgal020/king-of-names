@@ -83,12 +83,12 @@ export function MeetingTimeline({ personId, initial }: { personId: string; initi
     <section className="mt-8">
       <div className="mb-3 flex items-center justify-between">
         <h2 className="type-section">
-          {meetings.length === 1 ? "Met once" : `Met ${meetings.length} times`}
+          {meetings.length === 0 ? "No meetings yet" : meetings.length === 1 ? "Met once" : `Met ${meetings.length} times`}
         </h2>
         {!adding && (
           <Button variant="ghost" size="touch" className="-mr-3 text-primary" onClick={() => setAdding(true)}>
             <PlusIcon aria-hidden />
-            Met again
+            {meetings.length === 0 ? "Add a meeting" : "Met again"}
           </Button>
         )}
       </div>

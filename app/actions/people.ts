@@ -66,12 +66,18 @@ export async function updatePerson(id: string, input: unknown, { cityByHand = fa
   if (!isPersonId(id)) return { ok: false, error: "This person no longer exists." };
 
   const supabase = await createClient();
-  const { data: before } = await supabase.from("people").select("lat, lng").eq("id", id).maybeSingle();
+  const { data: before } = await supabase.from("people").select("lat, lng, met_at, imported_at").eq("id", id).maybeSingle();
   if (!before) return { ok: false, error: "This person no longer exists." };
   const moved = before.lat !== parsed.data.lat || before.lng !== parsed.data.lng;
   const person = await withPlace(parsed.data, { lookUp: moved && !cityByHand });
 
-  const { error } = await supabase.from("people").update(person).eq("id", id);
+  // An imported person's date was only the import time; setting it, or a
+  // place, by hand makes it a real meeting.
+  const met = before.imported_at && (Date.parse(before.met_at) !== Date.parse(person.met_at) || person.lat !== null || person.city);
+  const { error } = await supabase
+    .from("people")
+    .update(met ? { ...person, imported_at: null } : person)
+    .eq("id", id);
   if (error) return { ok: false, error: NOT_SAVED };
   revalidatePath("/people");
   revalidatePath(`/people/${id}`);

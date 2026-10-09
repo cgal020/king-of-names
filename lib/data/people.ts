@@ -13,7 +13,7 @@ import type { Encounter, Person } from "@/lib/types";
 export const PERSON_COLUMNS =
   "id, full_name, met_at, met_timezone, lat, lng, location_accuracy_m, place_name, city, region, country, " +
   "where_met_text, phone, birthday_month, birthday_day, birthday_year, notes, follow_up_note, follow_up_date, " +
-  "extras, relationship, tags, created_at, updated_at";
+  "extras, relationship, tags, imported_at, created_at, updated_at";
 
 export const usingSampleData = () => !authConfigured();
 
@@ -90,9 +90,9 @@ export async function listMeetings(person: Person): Promise<Encounter[]> {
   const later = rows.filter((r) => !r.first_meeting);
   const urls = await Promise.all(rows.map((r) => audioUrl(supabase, r.audio_path)));
   const urlFor = (row: CaptureRow | undefined) => (row ? (urls[rows.indexOf(row)] ?? null) : null);
-  return [...later.map((r) => laterMeeting(r, urlFor(r))), firstMeeting(person, first, urlFor(first))].sort((a, b) =>
-    b.met_at.localeCompare(a.met_at),
-  );
+  // Someone imported from contacts has no first meeting until one is recorded.
+  const opening = person.imported_at && !first ? [] : [firstMeeting(person, first, urlFor(first))];
+  return [...later.map((r) => laterMeeting(r, urlFor(r))), ...opening].sort((a, b) => b.met_at.localeCompare(a.met_at));
 }
 
 // Meetings after the first, for every person (the map's trip mode).

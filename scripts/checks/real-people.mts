@@ -220,6 +220,34 @@ try {
   expect(invites).toBe(1);
   pass("Settings shows the real account and makes a real invite code");
 
+  // Importing contacts: someone already saved (same phone) only gets what's
+  // missing; someone new is added as imported, not "met today"; Undo reverses both.
+  const vcf = [
+    `BEGIN:VCARD\r\nVERSION:3.0\r\nFN:${name}\r\nTEL:050 555 0199\r\nEMAIL:smoke@pinkwater.example\r\nEND:VCARD`,
+    "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Imported Ivy Example\r\nTEL:+971 50 555 0123\r\nORG:Ivy Labs\r\nEND:VCARD",
+  ].join("\r\n");
+  const [vcfChooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Import a contacts file (.vcf)" }).click()]);
+  await vcfChooser.setFiles({ name: "contacts.vcf", mimeType: "text/vcard", buffer: Buffer.from(vcf) });
+  await expect(page.getByText("1 new · 1 already saved, with details to add")).toBeVisible();
+  await expect(page.getByText("Already saved · adds email")).toBeVisible();
+  await page.getByRole("button", { name: "Import 2" }).click();
+  await expect(page.getByText("Added 1 person, updated 1")).toBeVisible();
+  const { data: ivy } = await admin.from("people").select("imported_at, city").eq("user_id", userId).eq("full_name", "Imported Ivy Example").single();
+  expect(ivy?.imported_at).toBeTruthy();
+  const { data: existing } = await admin.from("people").select("extras").eq("id", personId).single();
+  expect((existing?.extras as { email?: string }).email).toBe("smoke@pinkwater.example");
+  const { count: namesakes } = await admin.from("people").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("full_name", name);
+  expect(namesakes).toBe(1);
+  pass("importing contacts adds only the new person, marked as imported, and fills in what a saved person was missing");
+
+  await page.getByRole("button", { name: "Undo" }).click();
+  await expect(page.getByText("Import undone")).toBeVisible();
+  const { count: ivyLeft } = await admin.from("people").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("full_name", "Imported Ivy Example");
+  expect(ivyLeft).toBe(0);
+  const { data: restored } = await admin.from("people").select("extras").eq("id", personId).single();
+  expect((restored?.extras as { email?: string }).email).toBeUndefined();
+  pass("Undo removes the imported person and the details the import filled in");
+
   const [download] = await Promise.all([page.waitForEvent("download"), page.getByRole("button", { name: "Export JSON" }).click()]);
   const exported = JSON.parse(await readFile((await download.path())!, "utf8"));
   expect(JSON.stringify(exported)).toContain(name);
