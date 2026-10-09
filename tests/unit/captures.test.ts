@@ -105,6 +105,18 @@ describe("refused uploads in the offline queue", () => {
     expect(classifyUploadStatus(503)).toBe("retry");
   });
 
+  it("leaves a note alone while its first upload is under way, and retries it if the app closed mid-send", async () => {
+    const store = memoryStore();
+    const now = Date.parse("2026-10-09T10:00:00Z");
+    await store.put({ ...item("a", "2026-10-09T09:59:00Z"), sendingUntil: "2026-10-09T10:00:20Z" });
+    const upload = vi.fn<(i: QueuedCapture) => Promise<void>>(async () => {});
+    expect(await flushQueue(store, upload, now)).toEqual({ sent: 0, waiting: 0, rejected: 0 });
+    expect(upload).not.toHaveBeenCalled();
+    // Reopened later: the send window has passed, so it goes now.
+    expect(await flushQueue(store, upload, now + 60_000)).toEqual({ sent: 1, waiting: 0, rejected: 0 });
+    expect(await store.all()).toEqual([]);
+  });
+
   it("keeps a refused note, marks it, and still sends the ones after it", async () => {
     const store = memoryStore();
     await store.put(item("a", "2026-10-08T09:00:00Z"));

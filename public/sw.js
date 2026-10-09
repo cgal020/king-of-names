@@ -3,10 +3,12 @@
 // build files they need). Pages and API responses with people's details are
 // never cached; recordings made offline wait in IndexedDB, not here.
 
-const VERSION = "v2";
+const VERSION = "v3";
 const SHELL = `shell-${VERSION}`;
 const STATIC = `static-${VERSION}`;
-const SHELL_PAGES = ["/capture", "/offline"];
+// The event takes list is kept too, so ending an event works without signal.
+// Like Capture, its HTML holds no personal data: the takes load in the browser.
+const SHELL_PAGES = ["/capture", "/capture/event", "/offline"];
 const SHELL_FILES = ["/manifest.webmanifest", "/icons/icon-192.png"];
 
 // Build files referenced by a page or stylesheet. Inline scripts escape their
@@ -103,22 +105,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Pages: always from the network. Each online visit to Capture refreshes
-  // its offline copy. Offline, Capture opens from that copy and every other
-  // page shows the offline screen.
+  // Pages: always from the network. Each online visit to a shell page
+  // refreshes its offline copy. Offline, shell pages open from that copy and
+  // every other page shows the offline screen.
   if (request.mode === "navigate") {
-    const isCapture = url.pathname === "/" || url.pathname === "/capture";
+    const path = url.pathname === "/" ? "/capture" : url.pathname;
+    const shellPath = SHELL_PAGES.includes(path) ? path : "/offline";
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (url.pathname === "/capture" && usable(response)) {
-            event.waitUntil(saveShellPage("/capture", response.clone()).catch(() => {}));
+          if (shellPath === path && path !== "/offline" && usable(response)) {
+            event.waitUntil(saveShellPage(path, response.clone()).catch(() => {}));
           }
           return response;
         })
         .catch(async () => {
           const cache = await caches.open(SHELL);
-          return (await cache.match(isCapture ? "/capture" : "/offline")) ?? Response.error();
+          return (await cache.match(shellPath)) ?? Response.error();
         }),
     );
   }

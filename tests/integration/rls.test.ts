@@ -1,5 +1,5 @@
 // Proves that one account can never read or change another account's people,
-// captures, profile or audio. Runs against a real Supabase project because
+// captures, events, profile or audio. Runs against a real Supabase project because
 // row level security only exists in Postgres. See README "Running tests".
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomBytes, randomUUID } from "node:crypto";
@@ -41,6 +41,7 @@ describe("row level security between two accounts", () => {
   let audioPath: string;
   let photoId: string;
   let photoPath: string;
+  let eventId: string;
 
   beforeAll(async () => {
     [a, b] = await Promise.all([createTestUser("a"), createTestUser("b")]);
@@ -92,6 +93,14 @@ describe("row level security between two accounts", () => {
       .single();
     if (photoError) throw photoError;
     photoId = photo.id;
+
+    const { data: event, error: eventError } = await a.client
+      .from("events")
+      .insert({ name: "Gallery night" })
+      .select("id")
+      .single();
+    if (eventError) throw eventError;
+    eventId = event.id;
   });
 
   afterAll(async () => {
@@ -204,6 +213,16 @@ describe("row level security between two accounts", () => {
     const capture = await b.client.from("captures").insert({ person_id: personId });
     expect(photo.error).not.toBeNull();
     expect(capture.error).not.toBeNull();
+  });
+
+  it("hides another user's events and blocks joining them", async () => {
+    const seen = await b.client.from("events").select("*").eq("id", eventId);
+    expect(seen.data ?? []).toEqual([]);
+    const renamed = await b.client.from("events").update({ name: "hacked" }).eq("id", eventId).select();
+    expect(renamed.data ?? []).toEqual([]);
+    // A take of B's can't be filed under A's event.
+    const take = await b.client.from("captures").insert({ event_id: eventId });
+    expect(take.error).not.toBeNull();
   });
 
   it("gives clients no access to invite codes", async () => {

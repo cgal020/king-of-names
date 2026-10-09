@@ -35,6 +35,10 @@ type PersonFormProps = {
   transcript?: string | null;
   durationSeconds?: number | null;
   nameConfidence?: Confidence;
+  // A recording other than the latest one (an event take). null: none on this phone.
+  audio?: { url: string; durationSeconds: number } | null;
+  // Where to go after Save or Discard, and what to record, instead of the defaults.
+  after?: { href: string; onDone: (outcome: "saved" | "discarded") => void };
 };
 
 type Section = "phone" | "birthday" | "followUp" | "work" | "email" | "web" | "address";
@@ -81,6 +85,8 @@ export function PersonForm({
   transcript,
   durationSeconds,
   nameConfidence = "high",
+  audio,
+  after,
 }: PersonFormProps) {
   const router = useRouter();
   const draftId = useId();
@@ -90,7 +96,8 @@ export function PersonForm({
   const { attachDraft } = usePhotos();
   const { result: card, setResult: setCard } = useCardResult();
   // The note just recorded on this phone, so review plays back the real audio.
-  const { recording } = useRecording();
+  const { recording: latest } = useRecording();
+  const recording = audio === undefined ? latest : audio;
   // Details from a scanned business card are merged into the draft once.
   const [merged] = useState(() =>
     mode === "review" && card ? mergeCard(initial, card.details, nameConfidence) : null,
@@ -147,6 +154,11 @@ export function PersonForm({
     toast.success(updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
       description: "Preview only. Nothing was stored.",
     });
+    if (after) {
+      after.onDone("saved");
+      router.push(after.href);
+      return;
+    }
     router.push(updating ? `/people/${updating.id}` : personId ? `/people/${personId}` : "/people");
   }
 
@@ -154,7 +166,8 @@ export function PersonForm({
     if (photoTarget.captureId) attachDraft(photoTarget.captureId, null);
     setCard(null);
     toast("Note discarded", { description: "The recording would be deleted." });
-    router.push("/capture");
+    after?.onDone("discarded");
+    router.push(after?.href ?? "/capture");
   }
 
   return (

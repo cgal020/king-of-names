@@ -10,12 +10,15 @@ import {
   ChevronRightIcon,
   MapPinIcon,
   MapPinOffIcon,
+  PartyPopperIcon,
   PencilLineIcon,
   ScanLineIcon,
   SettingsIcon,
 } from "lucide-react";
 import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
-import { CouldNotSend, uploadCapture, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
+import { CouldNotSend, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
+import { EventBanner, StartEventSheet } from "@/components/capture/event-mode";
+import { currentEvent, eventActions, useEventSession } from "@/components/capture/event-store";
 import { InstallCoach } from "@/components/capture/install-coach";
 import { RecordButton } from "@/components/capture/record-button";
 import { useRecording } from "@/components/capture/recording-store";
@@ -26,9 +29,11 @@ import { buttonVariants } from "@/components/ui/button";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
 import { appConfig } from "@/lib/config";
 import { formatDistance, formatDuration } from "@/lib/format";
+import { isLive, openTakes, type EventSession } from "@/lib/events/event";
 import { trackLocation, type LocationStatus } from "@/lib/geo/locate";
+import { mockTakeDraft } from "@/lib/mock/events";
 import { mockDraft, mockPendingReview } from "@/lib/mock/people";
-import { UploadRejected, type QueuedCapture } from "@/lib/offline/queue";
+import type { QueuedCapture } from "@/lib/offline/queue";
 import type { Photo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -36,6 +41,9 @@ import { cn } from "@/lib/utils";
 // is under 10 s.
 const STEPS = ["Saving the recording", "Transcribing", "Picking out the details", "Finding the place"];
 const STEP_MS = 650;
+
+const secondaryAction =
+  "flex h-11 items-center gap-2 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:text-foreground";
 
 type Phase = "idle" | "recording" | "processing";
 type LocationState = { state: "idle" } | LocationStatus;
@@ -62,6 +70,9 @@ export function CaptureScreen() {
   const draftPhotos = usePhotosFor({ captureId: mockDraft.captureId });
   const { setRecording } = useRecording();
   const queue = useCaptureQueue();
+  const event = useEventSession();
+  const eventLive = isLive(event);
+  const [startingEvent, setStartingEvent] = useState(false);
 
   // Timer, the simulated level when the mic isn't live, and the 90 second cap.
   useEffect(() => {
@@ -147,15 +158,25 @@ export function CaptureScreen() {
   async function finish(result: RecordingResult | null) {
     setLevel(0);
     setLive(false);
-    if (result) setRecording({ url: URL.createObjectURL(result.blob), durationSeconds: result.durationSeconds });
-    setStep(0);
-    setUploaded(false);
-    setPhase("processing");
+    // This recording's own location watch, so starting the next take while
+    // this one waits for a fix can't swap it out.
+    const locating = tracker.current;
+    tracker.current = null;
+    const quickTake = isLive(currentEvent());
+    if (quickTake) {
+      // Event mode: straight back to the record button; the take is reviewed later.
+      setPhase("idle");
+      setLocation({ state: "idle" });
+    } else {
+      if (result) setRecording({ url: URL.createObjectURL(result.blob), durationSeconds: result.durationSeconds });
+      setStep(0);
+      setUploaded(false);
+      setPhase("processing");
+    }
 
     // The best fix from the recording; with none yet, a few more seconds,
     // then the note goes without one and the city is set on review.
-    const located = (await tracker.current?.done()) ?? { ok: false as const, reason: "unavailable" as const };
-    tracker.current = null;
+    const located = (await locating?.done()) ?? { ok: false as const, reason: "unavailable" as const };
     const item: QueuedCapture = {
       id: crypto.randomUUID(),
       audio: result?.blob ?? new Blob([], { type: "audio/mp4" }),
@@ -167,19 +188,46 @@ export function CaptureScreen() {
       attempts: 0,
       lastError: null,
     };
-    uploadCapture(item).then(
-      () => setUploaded(true),
-      // No connection, or too weak to send: keep the note on the phone and
-      // send it later. A refused note is kept too, marked, for the user to see.
-      async (error: unknown) => {
-        const refused = error instanceof UploadRejected;
-        await queue.save(refused ? { ...item, attempts: 1, lastError: error.name, rejected: error.message } : item);
-        setPhase("idle");
-        setLocation({ state: "idle" });
-        if (refused) toast.error("This note couldn’t be sent", { description: error.message });
-        else toast("Saved on your phone", { description: "No connection right now. It’ll be sent when you’re back online." });
+    if (quickTake) {
+      saveTake(item, result);
+      return;
+    }
+    void queue.sendNew(item).then((sent) => {
+      if (sent.ok) return setUploaded(true);
+      // No connection, or too weak to send: the note stays on the phone and
+      // goes later. A refused note stays too, marked, for the user to see.
+      setPhase("idle");
+      setLocation({ state: "idle" });
+      if (sent.refused) toast.error("This note couldn’t be sent", { description: sent.refused });
+      else toast("Saved on your phone", { description: "No connection right now. It’ll be sent when you’re back online." });
+    });
+  }
+
+  function saveTake(item: QueuedCapture, result: RecordingResult | null) {
+    const ongoing = currentEvent();
+    if (!ongoing) return;
+    const index = ongoing.takes.length;
+    eventActions.addTake(
+      {
+        captureId: item.id,
+        recordedAt: item.recordedAt,
+        durationSeconds: item.durationSeconds,
+        draft: mockTakeDraft(index, { ...item, captureId: item.id, eventName: ongoing.name }),
+        readyAt: null,
+        outcome: null,
       },
+      result ? URL.createObjectURL(result.blob) : undefined,
     );
+    toast.success(`Take ${index + 1} saved`, { description: "Say the next name whenever you’re ready." });
+    void queue.sendNew(item).then((sent) => {
+      if (sent.ok) eventActions.markSent(item.id);
+      else if (sent.refused) toast.error("This take couldn’t be sent", { description: sent.refused });
+    });
+  }
+
+  function endEvent() {
+    eventActions.end();
+    router.push("/capture/event");
   }
 
   function handlePress() {
@@ -206,8 +254,8 @@ export function CaptureScreen() {
       </header>
       {/* Kept in the layout while recording so the heading does not jump. */}
       <div className={cn(phase !== "idle" && "invisible")}>
-        <InstallCoach />
-        <NeedsReview />
+        {eventLive ? <EventBanner event={event} onEnd={endEvent} /> : <InstallCoach />}
+        {!eventLive && <NeedsReview event={event} />}
         <WaitingToSend waiting={queue.waiting} sending={queue.sending} onSend={() => void queue.send()} />
         <CouldNotSend notes={queue.rejected} onRemove={(id) => void queue.remove(id)} />
       </div>
@@ -219,10 +267,12 @@ export function CaptureScreen() {
         ) : (
           <>
             <h1 className="text-[2rem] leading-tight font-semibold tracking-tight [@media(max-height:720px)]:text-[1.75rem]">
-              {phase === "recording" ? "Listening…" : "Who did you just meet?"}
+              {phase === "recording" ? "Listening…" : eventLive ? "Who’s next?" : "Who did you just meet?"}
             </h1>
             <p className="mt-2 max-w-[34ch] text-[0.95rem] text-muted-foreground">
-              Say their name, where you are, and anything worth remembering.
+              {eventLive
+                ? "Say their name and one thing to remember."
+                : "Say their name, where you are, and anything worth remembering."}
             </p>
             {draftPhotos.length > 0 && <DraftPhotos photos={draftPhotos} />}
           </>
@@ -266,18 +316,36 @@ export function CaptureScreen() {
 
         <div className="mt-4 flex h-11 items-center">
           {phase === "idle" ? (
-            <Link
-              href="/people/new"
-              className="flex h-11 items-center gap-2 rounded-xl px-3 text-[0.95rem] font-medium text-muted-foreground transition-colors hover:text-foreground"
-            >
-              <PencilLineIcon className="size-4" aria-hidden />
-              Add manually
-            </Link>
+            eventLive ? (
+              <Link href="/capture/event" className={secondaryAction}>
+                See takes so far
+              </Link>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Link href="/people/new" className={secondaryAction}>
+                  <PencilLineIcon className="size-4" aria-hidden />
+                  Add manually
+                </Link>
+                <button type="button" className={secondaryAction} onClick={() => setStartingEvent(true)}>
+                  <PartyPopperIcon className="size-4" aria-hidden />
+                  Event mode
+                </button>
+              </span>
+            )
           ) : (
             <LocationChip location={location} placeName={placeName} />
           )}
         </div>
       </section>
+      {startingEvent && (
+        <StartEventSheet
+          onCancel={() => setStartingEvent(false)}
+          onStart={(name) => {
+            setStartingEvent(false);
+            eventActions.start(name);
+          }}
+        />
+      )}
       {askingConsent && (
         <AiConsentSheet
           onCancel={() => setAskingConsent(false)}
@@ -338,16 +406,24 @@ function DraftPhotos({ photos }: { photos: Photo[] }) {
   );
 }
 
-function NeedsReview() {
+// Notes waiting for a decision: takes from an event that has ended, or the
+// mockup's sample note.
+function NeedsReview({ event }: { event: EventSession | null }) {
+  const takes = openTakes(event);
+  const fromEvent = event && takes.length > 0;
   return (
     <Link
-      href="/capture/review"
+      href={fromEvent ? "/capture/event" : "/capture/review"}
       className="mt-1 flex items-center gap-3 rounded-2xl bg-muted px-4 py-3 transition-colors hover:bg-muted/70"
     >
       <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-medium">1 note needs review</span>
-        <span className="block truncate text-sm text-muted-foreground">{mockPendingReview.preview}</span>
+        <span className="block text-sm font-medium">
+          {fromEvent ? `${takes.length} ${takes.length === 1 ? "note needs" : "notes need"} review` : "1 note needs review"}
+        </span>
+        <span className="block truncate text-sm text-muted-foreground">
+          {fromEvent ? `From ${event.name}` : mockPendingReview.preview}
+        </span>
       </span>
       <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
     </Link>
