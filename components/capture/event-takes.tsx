@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { toast } from "sonner";
 import { CheckIcon, ChevronRightIcon, CloudUploadIcon, LoaderCircleIcon, PartyPopperIcon } from "lucide-react";
+import { processCapture } from "@/components/capture/capture-queue";
 import { eventActions, useEventSession } from "@/components/capture/event-store";
 import { ScreenHeader } from "@/components/screen-header";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { authConfigured } from "@/lib/auth/config";
 import { openTakes, takeDetail, takeStatus, type Take, type TakeStatus } from "@/lib/events/event";
 import { cn } from "@/lib/utils";
 
@@ -33,6 +35,19 @@ export function EventTakes() {
     const id = window.setInterval(() => setNow(Date.now()), 500);
     return () => window.clearInterval(id);
   }, [processing]);
+
+  // Sent takes the server hasn't read yet (the app was closed mid-way): read
+  // them now. Saved notes are skipped; the server answers at once for those
+  // already read.
+  const unread = event?.takes.filter((t) => t.readyAt && !t.processed && !t.outcome).map((t) => t.captureId).join() ?? "";
+  useEffect(() => {
+    if (!authConfigured() || !unread) return;
+    for (const id of unread.split(",")) {
+      void processCapture(id)
+        .then(({ draft }) => draft && eventActions.setDraft(id, draft))
+        .catch(() => {});
+    }
+  }, [unread]);
 
   if (!hydrated) return null;
 

@@ -4,10 +4,14 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { EXTRACTION_SYSTEM, extractionUserMessage, type ExtractionContext } from "@/lib/ai/prompt";
 import { ExtractionSchema, normalizeExtraction, type CleanExtraction } from "@/lib/ai/schema";
 
-// One client per server instance; it holds no per-request state.
-const client = new Anthropic({ timeout: 20_000, maxRetries: 1 });
-
 export class ExtractionError extends Error {}
+
+// One client per server instance, made on first use; it holds no per-request state.
+let client: Anthropic | null = null;
+function anthropic() {
+  if (!process.env.ANTHROPIC_API_KEY) throw new ExtractionError("ANTHROPIC_API_KEY is not set");
+  return (client ??= new Anthropic({ timeout: 20_000, maxRetries: 1 }));
+}
 
 function model() {
   const id = process.env.EXTRACTION_MODEL;
@@ -18,7 +22,7 @@ function model() {
 // Turns a transcript into profile fields. Only the transcript, the recording
 // time and the user's tag names are sent; nothing else about the user.
 export async function extractPerson(context: ExtractionContext): Promise<{ raw: unknown; clean: CleanExtraction }> {
-  const response = await client.messages.parse({
+  const response = await anthropic().messages.parse({
     model: model(),
     max_tokens: 2000,
     system: EXTRACTION_SYSTEM,

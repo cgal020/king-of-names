@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { CircleAlertIcon, CloudUploadIcon } from "lucide-react";
 import { eventActions } from "@/components/capture/event-store";
 import { ConfirmButton } from "@/components/confirm-button";
+import { authConfigured } from "@/lib/auth/config";
+import type { Draft } from "@/lib/types";
 import {
   classifyUploadStatus,
   flushQueue,
@@ -22,17 +24,29 @@ const RETRY_MS = 30_000;
 // in the queue: UploadRejected when the server refuses the note itself, any
 // other error when trying again later may work. A weak signal often still
 // reports navigator.onLine, so a failed or slow request is what counts.
-// Mockup: a request to the site stands in for the real POST to /api/captures,
-// which takes the capture id from the phone so a retry never makes a second
-// capture, and answers a refusal with { error: "<reason>" }.
+// POST /api/captures takes the capture id from the phone, so a retry never
+// makes a second capture, and answers a refusal with { error: "<reason>" }.
+// The preview, with no accounts, sends a small request to the site instead.
 export async function uploadCapture(item: QueuedCapture) {
-  void item;
   if (!navigator.onLine) throw new TypeError("Offline");
-  const response = await fetch("/manifest.webmanifest", {
-    method: "HEAD",
-    cache: "no-store",
-    signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
-  });
+  const signal = AbortSignal.timeout(UPLOAD_TIMEOUT_MS);
+  let response: Response;
+  if (authConfigured()) {
+    const form = new FormData();
+    form.set("audio", item.audio, `${item.id}`);
+    form.set("id", item.id);
+    form.set("duration_seconds", String(Math.round(item.durationSeconds * 10) / 10));
+    form.set("recorded_at", item.recordedAt);
+    if (item.timezone) form.set("timezone", item.timezone);
+    if (item.location) {
+      form.set("lat", String(item.location.lat));
+      form.set("lng", String(item.location.lng));
+      if (item.location.accuracyM !== null) form.set("accuracy_m", String(item.location.accuracyM));
+    }
+    response = await fetch("/api/captures", { method: "POST", body: form, signal });
+  } else {
+    response = await fetch("/manifest.webmanifest", { method: "HEAD", cache: "no-store", signal });
+  }
   const outcome = classifyUploadStatus(response.status);
   if (outcome === "rejected") {
     const body = await response.json().catch(() => null);
@@ -40,7 +54,16 @@ export async function uploadCapture(item: QueuedCapture) {
   }
   if (response.status === 429) throw new UploadRateLimited(Number(response.headers.get("retry-after")) || 600);
   if (outcome === "retry") throw new Error(`Upload failed (${response.status})`);
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  if (!authConfigured()) await new Promise((resolve) => setTimeout(resolve, 500));
+}
+
+// Runs a sent note through transcription and extraction. Resolves when the
+// draft is ready (or the steps that failed are known); throws if the server
+// couldn't be reached, and the note can be processed later from Review.
+export async function processCapture(id: string): Promise<{ status: string; failedSteps: string[]; draft: Draft | null }> {
+  const response = await fetch(`/api/captures/${id}/process`, { method: "POST", signal: AbortSignal.timeout(60_000) });
+  if (!response.ok) throw new Error(`Processing failed (${response.status})`);
+  return response.json();
 }
 
 let store: ReturnType<typeof indexedDbStore> | null = null;
@@ -74,6 +97,12 @@ function useQueueEngine() {
       await uploadCapture(item);
       // An event take that waited on the phone is now on its way to review.
       eventActions.markSent(item.id);
+      // Read it now, so it waits on the review strip (or the takes list) with a name.
+      if (authConfigured()) {
+        void processCapture(item.id)
+          .then(({ draft }) => draft && eventActions.setDraft(item.id, draft))
+          .catch(() => {});
+      }
     });
     setSending(false);
     await refresh();

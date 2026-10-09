@@ -11,7 +11,7 @@ import { ScreenHeader } from "@/components/screen-header";
 import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
 import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
-import { getPerson, listMeetings, usingSampleData } from "@/lib/data/people";
+import { getPerson, listMeetings } from "@/lib/data/people";
 import { cn } from "@/lib/utils";
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
@@ -149,7 +149,7 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </p>
       </section>
 
-      <MeetingTimeline personId={p.id} initial={meetings} canAdd={usingSampleData()} />
+      <MeetingTimeline personId={p.id} initial={meetings} />
 
       <div className="mt-10">
         <DeletePersonButton personId={p.id} name={p.full_name} />

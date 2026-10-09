@@ -1,29 +1,30 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { MapPinIcon, MicIcon, PlusIcon } from "lucide-react";
+import { addMeeting } from "@/app/actions/notes";
 import { OriginalNote } from "@/components/original-note";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { authConfigured } from "@/lib/auth/config";
 import { formatMetDate } from "@/lib/format";
+import { locateOnce } from "@/lib/geo/locate";
 import { mockCurrentLocation } from "@/lib/mock/people";
 import type { Encounter } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // Every time you met someone, newest first, with a quick way to add another.
-// Preview: new meetings live in memory. "Met again" comes to saved people
-// with voice notes, which record each later meeting.
-export function MeetingTimeline({
-  personId,
-  initial,
-  canAdd = true,
-}: {
-  personId: string;
-  initial: Encounter[];
-  canAdd?: boolean;
-}) {
-  const [meetings, setMeetings] = useState(initial);
+// "Met again" saves a typed note stamped with now and where the phone is; the
+// preview keeps it in memory.
+export function MeetingTimeline({ personId, initial }: { personId: string; initial: Encounter[] }) {
+  const router = useRouter();
+  const real = authConfigured();
+  const [previewMeetings, setMeetings] = useState(initial);
+  // Saved meetings come back from the server after each save.
+  const meetings = real ? initial : previewMeetings;
+  const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
   const [note, setNote] = useState("");
   const [listening, setListening] = useState(false);
@@ -38,8 +39,26 @@ export function MeetingTimeline({
     return () => window.clearTimeout(id);
   }, [listening]);
 
-  function save() {
-    if (!note.trim()) return;
+  async function save() {
+    if (!note.trim() || saving) return;
+    if (real) {
+      setSaving(true);
+      const located = await locateOnce(undefined, 4_000);
+      const result = await addMeeting(personId, note, {
+        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        location: located.ok ? { lat: located.fix.lat, lng: located.fix.lng, accuracyM: located.fix.accuracyM } : null,
+      }).catch(() => ({ ok: false as const, error: "That didn’t save. Check your connection and try again." }));
+      setSaving(false);
+      if (!result.ok) {
+        toast.error(result.error);
+        return;
+      }
+      setNote("");
+      setAdding(false);
+      toast.success("Meeting added");
+      router.refresh();
+      return;
+    }
     setMeetings((list) => [
       {
         id: crypto.randomUUID(),
@@ -66,7 +85,7 @@ export function MeetingTimeline({
         <h2 className="type-section">
           {meetings.length === 1 ? "Met once" : `Met ${meetings.length} times`}
         </h2>
-        {canAdd && !adding && (
+        {!adding && (
           <Button variant="ghost" size="touch" className="-mr-3 text-primary" onClick={() => setAdding(true)}>
             <PlusIcon aria-hidden />
             Met again
@@ -78,7 +97,7 @@ export function MeetingTimeline({
         <div className="mb-5 rounded-2xl bg-muted p-4">
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <MapPinIcon className="size-4 text-primary" aria-hidden />
-            Now &middot; {mockCurrentLocation.placeName}, {mockCurrentLocation.city}
+            {real ? "Now, where you are" : `Now · ${mockCurrentLocation.placeName}, ${mockCurrentLocation.city}`}
           </p>
           <div className="relative mt-3">
             <Textarea
@@ -87,27 +106,30 @@ export function MeetingTimeline({
               placeholder={listening ? "Listening…" : "What's new with them?"}
               aria-label="Note about this meeting"
               rows={3}
-              className="min-h-24 rounded-xl bg-background px-3.5 py-2.5 pr-12 text-base"
+              className={cn("min-h-24 bg-background", !real && "pr-12")}
             />
-            <button
-              type="button"
-              onClick={() => setListening(true)}
-              aria-label="Record a note"
-              aria-pressed={listening}
-              className={cn(
-                "absolute top-2 right-2 grid size-9 place-items-center rounded-lg",
-                listening ? "animate-pulse text-primary" : "text-muted-foreground",
-              )}
-            >
-              <MicIcon className="size-5" />
-            </button>
+            {/* Preview only: a voice note here "hears" a sample. */}
+            {!real && (
+              <button
+                type="button"
+                onClick={() => setListening(true)}
+                aria-label="Record a note"
+                aria-pressed={listening}
+                className={cn(
+                  "absolute top-2 right-2 grid size-9 place-items-center rounded-lg",
+                  listening ? "animate-pulse text-primary" : "text-muted-foreground",
+                )}
+              >
+                <MicIcon className="size-5" />
+              </button>
+            )}
           </div>
           <div className="mt-3 flex gap-2">
             <Button variant="outline" size="touch" className="flex-1" onClick={() => setAdding(false)}>
               Cancel
             </Button>
-            <Button size="touch" className="flex-[2]" onClick={save} disabled={!note.trim()}>
-              Add meeting
+            <Button size="touch" className="flex-[2]" onClick={() => void save()} disabled={!note.trim() || saving}>
+              {saving ? "Saving…" : "Add meeting"}
             </Button>
           </div>
         </div>
@@ -139,7 +161,7 @@ export function MeetingTimeline({
               {m.note && <p className="mt-1.5 max-w-[65ch] text-[0.95rem] leading-relaxed text-pretty">{m.note}</p>}
               {(m.transcript || m.duration_seconds) && (
                 <div className="mt-2">
-                  <OriginalNote transcript={m.transcript} durationSeconds={m.duration_seconds} />
+                  <OriginalNote transcript={m.transcript} durationSeconds={m.duration_seconds} src={m.audio_url} />
                 </div>
               )}
             </li>

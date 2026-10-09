@@ -18,6 +18,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { mergeCard, type CardField } from "@/lib/cards/merge";
+import { discardNote, saveNote } from "@/app/actions/notes";
 import { createPerson, updatePerson, type SaveResult } from "@/app/actions/people";
 import { formatMetDate, localInputToIso, monthName } from "@/lib/format";
 import { cityOptions } from "@/lib/geo/cities";
@@ -46,6 +47,8 @@ type PersonFormProps = {
   after?: { href: string; onDone: (outcome: "saved" | "discarded") => void };
   // Opens the transcript, for when the details have to be typed from it.
   transcriptOpen?: boolean;
+  // The note is on the server, so saving and discarding go there too.
+  stored?: boolean;
 };
 
 type Section = "phone" | "birthday" | "followUp" | "work" | "email" | "web" | "address";
@@ -106,6 +109,7 @@ export function PersonForm({
   audio,
   after,
   transcriptOpen = false,
+  stored = false,
 }: PersonFormProps) {
   const router = useRouter();
   const draftId = useId();
@@ -200,8 +204,8 @@ export function PersonForm({
   async function save() {
     if (!canSave || saving) return;
     const name = values.full_name.trim();
-    if (mode === "review") {
-      // Voice notes aren't stored yet, so a reviewed note is a preview.
+    if (mode === "review" && !stored) {
+      // The preview: nothing is stored.
       if (photoTarget.captureId) attachDraft(photoTarget.captureId, updating?.id ?? personId ?? null);
       setCard(null);
       toast.success(updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
@@ -223,9 +227,11 @@ export function PersonForm({
     let result: SaveResult;
     try {
       result =
-        mode === "edit" && personId
-          ? await updatePerson(personId, payload, { cityByHand })
-          : await createPerson(payload, { cityByHand });
+        mode === "review" && captureId
+          ? await saveNote(captureId, payload, { cityByHand, existingPersonId: updating?.id ?? null })
+          : mode === "edit" && personId
+            ? await updatePerson(personId, payload, { cityByHand })
+            : await createPerson(payload, { cityByHand });
     } catch {
       result = { ok: false, error: "That didn’t save. Check your connection and try again." };
     }
@@ -235,16 +241,29 @@ export function PersonForm({
       return;
     }
     if (photoTarget.captureId) attachDraft(photoTarget.captureId, result.id);
-    toast.success(mode === "edit" ? "Changes saved" : `Saved ${name}`, {
+    setCard(null);
+    toast.success(mode === "edit" ? "Changes saved" : updating ? `Updated ${updating.full_name}` : `Saved ${name}`, {
       description: result.preview ? "Preview only. Nothing was stored." : undefined,
     });
+    if (after) {
+      after.onDone("saved");
+      router.push(after.href);
+      return;
+    }
     router.push(result.id && !result.preview ? `/people/${result.id}` : personId ? `/people/${personId}` : "/people");
   }
 
-  function discard() {
+  async function discard() {
+    if (stored && captureId) {
+      const result = await discardNote(captureId).catch(() => ({ ok: false, error: "That didn’t discard. Check your connection and try again." }));
+      if (!result.ok) {
+        toast.error(result.error ?? "That didn’t discard.");
+        return;
+      }
+    }
     if (photoTarget.captureId) attachDraft(photoTarget.captureId, null);
     setCard(null);
-    toast("Note discarded", { description: "The recording would be deleted." });
+    toast("Note discarded", { description: stored ? "The recording and transcript were deleted." : "The recording would be deleted." });
     after?.onDone("discarded");
     router.push(after?.href ?? "/capture");
   }
@@ -632,7 +651,7 @@ export function PersonForm({
               description="The recording and transcript will be deleted. This can't be undone."
               confirmLabel="Discard"
               cancelLabel="Keep"
-              onConfirm={discard}
+              onConfirm={() => void discard()}
               className="flex-1"
             />
           ) : (

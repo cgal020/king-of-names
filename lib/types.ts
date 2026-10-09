@@ -82,4 +82,6 @@ export type Encounter = {
   note: string | null;
   transcript: string | null;
   duration_seconds: number | null;
+  // A short-lived link to the recording, when there is one.
+  audio_url?: string | null;
 };

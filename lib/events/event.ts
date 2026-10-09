@@ -16,6 +16,8 @@ export type Take = {
   // When the draft is ready to review; null while the take waits on the phone to be sent.
   readyAt: string | null;
   outcome: TakeOutcome | null;
+  // With accounts connected: the server has processed it and `draft` is real.
+  processed?: boolean;
 };
 
 export type EventSession = {

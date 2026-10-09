@@ -2,6 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 import type { EventSession, Take, TakeOutcome } from "@/lib/events/event";
+import { authConfigured } from "@/lib/auth/config";
+import type { Draft } from "@/lib/types";
 
 // The current event and its takes. An event lasts hours and the app gets
 // closed in between, so it's kept in the browser. Mockup only: the real app
@@ -9,6 +11,9 @@ import type { EventSession, Take, TakeOutcome } from "@/lib/events/event";
 const KEY = "king-of-names:event";
 // How long the mockup "pipeline" takes once a take reaches the server.
 export const MOCK_PROCESSING_MS = 2_500;
+// With accounts connected a take shows as processing until the server's
+// draft arrives (setDraft); this is only how long it may claim to.
+const REAL_PROCESSING_MS = 10 * 60_000;
 
 let current: EventSession | null | undefined;
 const listeners = new Set<() => void>();
@@ -76,10 +81,15 @@ export const eventActions = {
   },
   // The take reached the server; its draft is ready shortly after.
   markSent(captureId: string, now = Date.now()) {
+    const wait = authConfigured() ? REAL_PROCESSING_MS : MOCK_PROCESSING_MS;
     updateTakes((takes) =>
-      takes.map((t) =>
-        t.captureId === captureId && !t.readyAt ? { ...t, readyAt: new Date(now + MOCK_PROCESSING_MS).toISOString() } : t,
-      ),
+      takes.map((t) => (t.captureId === captureId && !t.readyAt ? { ...t, readyAt: new Date(now + wait).toISOString() } : t)),
+    );
+  },
+  // The server's draft for a take: its name and details are now real.
+  setDraft(captureId: string, draft: Draft, now = Date.now()) {
+    updateTakes((takes) =>
+      takes.map((t) => (t.captureId === captureId ? { ...t, draft, processed: true, readyAt: new Date(now).toISOString() } : t)),
     );
   },
   decide(captureId: string, outcome: TakeOutcome) {

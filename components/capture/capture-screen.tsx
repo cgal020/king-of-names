@@ -16,7 +16,7 @@ import {
   SettingsIcon,
 } from "lucide-react";
 import { AiConsentSheet, hasAiConsent } from "@/components/capture/ai-consent";
-import { CouldNotSend, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
+import { CouldNotSend, processCapture, useCaptureQueue, WaitingToSend } from "@/components/capture/capture-queue";
 import { EventBanner, StartEventSheet } from "@/components/capture/event-mode";
 import { currentEvent, eventActions, useEventSession } from "@/components/capture/event-store";
 import { InstallCoach } from "@/components/capture/install-coach";
@@ -30,14 +30,14 @@ import { buttonVariants } from "@/components/ui/button";
 import { Wordmark } from "@/components/wordmark";
 import { authConfigured } from "@/lib/auth/config";
 import { canRecordAudio, MAX_SECONDS, startRecording as startAudio, type Recording, type RecordingResult } from "@/lib/audio/recorder";
-import { formatDistance, formatDuration } from "@/lib/format";
+import { formatDistance, formatDuration, formatMetDateTime } from "@/lib/format";
 import { describeWait } from "@/lib/captures/rate-limit";
 import { isLive, openTakes, type EventSession } from "@/lib/events/event";
 import { trackLocation, type LocationStatus } from "@/lib/geo/locate";
 import { mockTakeDraft } from "@/lib/mock/events";
 import { mockDraft, mockPendingReview } from "@/lib/mock/people";
 import type { QueuedCapture } from "@/lib/offline/queue";
-import type { Photo } from "@/lib/types";
+import type { Draft, Photo } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 // Mockup timings for the server pipeline after the upload. The real target
@@ -64,6 +64,9 @@ export function CaptureScreen() {
   const [step, setStep] = useState(0);
   // The first step, saving the recording, ends when the upload does.
   const [uploaded, setUploaded] = useState(false);
+  // The note on the server (accounts connected) and whether its draft is ready.
+  const [noteId, setNoteId] = useState<string | null>(null);
+  const [processed, setProcessed] = useState(false);
   // True while the real microphone is recording; false for the simulation
   // used where the browser can't record (insecure page, no MediaRecorder).
   const [live, setLive] = useState(false);
@@ -76,6 +79,7 @@ export function CaptureScreen() {
   const draftPhotos = usePhotosFor({ captureId: mockDraft.captureId });
   const { setRecording } = useRecording();
   const queue = useCaptureQueue();
+  const openNotes = useOpenNotes(queue.waiting);
   const event = useEventSession();
   const eventLive = isLive(event);
   const [startingEvent, setStartingEvent] = useState(false);
@@ -102,17 +106,19 @@ export function CaptureScreen() {
     return () => setRecordingChrome(false);
   }, [phase]);
 
-  // Walk through the pipeline steps, then open the review screen.
+  // Walk through the pipeline steps, then open the review screen. With
+  // accounts connected, the last step waits for the server's draft.
   useEffect(() => {
     if (phase !== "processing") return;
     if (step >= STEPS.length) {
-      router.push("/capture/review");
+      router.push(noteId ? `/capture/review?capture=${noteId}` : "/capture/review");
       return;
     }
     if (step === 0 && !uploaded) return;
+    if (step === STEPS.length - 1 && noteId && !processed) return;
     const id = window.setTimeout(() => setStep((s) => s + 1), STEP_MS);
     return () => window.clearTimeout(id);
-  }, [phase, step, uploaded, router]);
+  }, [phase, step, uploaded, noteId, processed, router]);
 
   // The "Record a note" home-screen shortcut opens /capture?record=1.
   useEffect(() => {
@@ -183,6 +189,8 @@ export function CaptureScreen() {
       if (result) setRecording({ url: URL.createObjectURL(result.blob), durationSeconds: result.durationSeconds });
       setStep(0);
       setUploaded(false);
+      setNoteId(null);
+      setProcessed(false);
       setPhase("processing");
     }
 
@@ -205,7 +213,17 @@ export function CaptureScreen() {
       return;
     }
     void queue.sendNew(item).then((sent) => {
-      if (sent.ok) return setUploaded(true);
+      if (sent.ok) {
+        setUploaded(true);
+        if (authConfigured()) {
+          setNoteId(item.id);
+          // Review processes it again if this doesn't get through.
+          void processCapture(item.id)
+            .catch(() => null)
+            .finally(() => setProcessed(true));
+        }
+        return;
+      }
       // No connection, or too weak to send: the note stays on the phone and
       // goes later. A refused note stays too, marked, for the user to see.
       setPhase("idle");
@@ -225,7 +243,9 @@ export function CaptureScreen() {
         captureId: item.id,
         recordedAt: item.recordedAt,
         durationSeconds: item.durationSeconds,
-        draft: mockTakeDraft(index, { ...item, captureId: item.id, eventName: ongoing.name }),
+        // The preview knows a sample up front; otherwise the server's draft
+        // replaces this empty one once the take is read.
+        draft: authConfigured() ? emptyTakeDraft(item) : mockTakeDraft(index, { ...item, captureId: item.id, eventName: ongoing.name }),
         readyAt: null,
         outcome: null,
       },
@@ -233,7 +253,14 @@ export function CaptureScreen() {
     );
     toast.success(`Take ${index + 1} saved`, { description: "Say the next name whenever you’re ready." });
     void queue.sendNew(item).then((sent) => {
-      if (sent.ok) eventActions.markSent(item.id);
+      if (sent.ok) {
+        eventActions.markSent(item.id);
+        if (authConfigured()) {
+          void processCapture(item.id)
+            .then(({ draft }) => draft && eventActions.setDraft(item.id, draft))
+            .catch(() => {});
+        }
+      }
       else if (sent.refused) toast.error("This take couldn’t be sent", { description: sent.refused });
       else if (sent.retryAfterSeconds) toast(LIMIT_TITLE, { description: limitDetail(sent.retryAfterSeconds) });
     });
@@ -269,7 +296,7 @@ export function CaptureScreen() {
       {/* Kept in the layout while recording so the heading does not jump. */}
       <div className={cn(phase !== "idle" && "invisible")}>
         {eventLive ? <EventBanner event={event} onEnd={endEvent} /> : <InstallCoach />}
-        {!eventLive && <NeedsReview event={event} />}
+        {!eventLive && <NeedsReview event={event} notes={openNotes} />}
         <WaitingToSend waiting={queue.waiting} sending={queue.sending} onSend={() => void queue.send()} />
         <CouldNotSend notes={queue.rejected} onRemove={(id) => void queue.remove(id)} />
       </div>
@@ -422,13 +449,96 @@ function DraftPhotos({ photos }: { photos: Photo[] }) {
   );
 }
 
-// Notes waiting for a decision: takes from an event that has ended, or the
-// mockup's sample note.
-function NeedsReview({ event }: { event: EventSession | null }) {
+// A take before the server has read it: when and where, nothing else yet.
+function emptyTakeDraft(item: QueuedCapture): Draft {
+  return {
+    captureId: item.id,
+    transcript: null,
+    durationSeconds: Math.round(item.durationSeconds),
+    nameConfidence: "high",
+    additionalPeople: [],
+    person: {
+      full_name: "",
+      met_at: item.recordedAt,
+      met_timezone: item.timezone,
+      lat: item.location?.lat ?? null,
+      lng: item.location?.lng ?? null,
+      location_accuracy_m: item.location?.accuracyM ?? null,
+      place_name: null,
+      city: null,
+      region: null,
+      country: null,
+      where_met_text: null,
+      phone: null,
+      birthday_month: null,
+      birthday_day: null,
+      birthday_year: null,
+      notes: null,
+      follow_up_note: null,
+      follow_up_date: null,
+      extras: {},
+      relationship: null,
+      tags: [],
+    },
+  };
+}
+
+type OpenNote = { id: string; recordedAt: string | null; name: string | null; preview: string | null };
+
+// Notes on the server waiting for a decision, refreshed when Capture opens,
+// comes back into view, or the phone's queue sends something.
+function useOpenNotes(queueWaiting: number) {
+  const [notes, setNotes] = useState<OpenNote[]>([]);
+  useEffect(() => {
+    if (!authConfigured()) return;
+    let cancelled = false;
+    const load = () =>
+      fetch("/api/captures", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : { notes: [] }))
+        .then((json: { notes?: OpenNote[] }) => {
+          if (!cancelled) setNotes(json.notes ?? []);
+        })
+        .catch(() => {});
+    void load();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [queueWaiting]);
+  return notes;
+}
+
+// Notes waiting for a decision: takes from an event that has ended, notes on
+// the server not yet saved or discarded, or the preview's sample note.
+function NeedsReview({ event, notes }: { event: EventSession | null; notes: OpenNote[] }) {
   const takes = openTakes(event);
   const fromEvent = event && takes.length > 0;
-  // The sample note is for the preview only.
-  if (!fromEvent && authConfigured()) return null;
+  if (!fromEvent && authConfigured()) {
+    if (!notes.length) return null;
+    const first = notes[0];
+    const when = first.recordedAt ? formatMetDateTime(first.recordedAt, null) : null;
+    return (
+      <Link
+        href={`/capture/review?capture=${first.id}`}
+        className="mt-2.5 flex min-h-14 items-center gap-3 rounded-2xl bg-muted px-3.5 py-3 transition-transform duration-120 active:scale-[0.98]"
+      >
+        <span className="size-2 shrink-0 rounded-full bg-primary" aria-hidden />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[0.9375rem] font-semibold">
+            {notes.length === 1 ? "1 note to review" : `${notes.length} notes to review`}
+          </span>
+          <span className="block truncate text-sm text-muted-foreground">
+            {[first.name, when].filter(Boolean).join(" · ") || first.preview || "Waiting to be read"}
+          </span>
+        </span>
+        <ChevronRightIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      </Link>
+    );
+  }
   return (
     <Link
       href={fromEvent ? "/capture/event" : "/capture/review"}

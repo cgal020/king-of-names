@@ -2,9 +2,14 @@ import "server-only";
 import OpenAI, { toFile } from "openai";
 import { audioFileName, TRANSCRIPTION_PROMPT } from "@/lib/ai/hints";
 
-const client = new OpenAI({ timeout: 30_000, maxRetries: 1 });
-
 export class TranscriptionError extends Error {}
+
+// Made on first use, so a missing key fails one note, not the whole server.
+let client: OpenAI | null = null;
+function openai() {
+  if (!process.env.OPENAI_API_KEY) throw new TranscriptionError("OPENAI_API_KEY is not set");
+  return (client ??= new OpenAI({ timeout: 30_000, maxRetries: 1 }));
+}
 
 // Speech to text. Only the audio and the hints leave the server.
 export async function transcribe(audio: Uint8Array, mime: string, keywords: string[] = []): Promise<string> {
@@ -20,7 +25,7 @@ export async function transcribe(audio: Uint8Array, mime: string, keywords: stri
     ? { body: { ...request, keywords, languages: (process.env.TRANSCRIPTION_LANGUAGES ?? "en").split(",") } }
     : undefined;
 
-  const result = await client.audio.transcriptions.create(request, hints);
+  const result = await openai().audio.transcriptions.create(request, hints);
   const text = result.text.trim();
   if (!text) throw new TranscriptionError("No speech found in the recording");
   return text;

@@ -103,6 +103,12 @@ npm run check:real
 
 Creates a throwaway account in the Supabase project from `.env.local`, signs in on the dev server, adds, edits, searches, exports and deletes a person, then deletes the account. Needs the dev server running with real keys.
 
+```bash
+npm run check:notes
+```
+
+The same for voice notes, with a fake microphone: upload, processing, review, save, "Met again", discard, an Event Mode take, and deleting a person with their recordings. Without an OpenAI key it checks the "couldn't transcribe" path.
+
 ## Claude and ChatGPT connector (MCP)
 
 `app/api/mcp/route.ts` is a read-only MCP server with four tools: `search_people`, `get_person`, `coming_up` and `people_near` (defined in `lib/mcp/people-tools.ts`). In development it serves the sample data without sign-in; in production it returns 404 until OAuth is wired up.
