@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarIcon, PhoneIcon } from "lucide-react";
+import { CalendarIcon, MessageCircleIcon, MessageSquareIcon, PhoneIcon } from "lucide-react";
 import { DeletePersonButton } from "@/components/delete-person-button";
-import { MiniMap } from "@/components/map/mini-map";
 import { FollowUpCard } from "@/components/follow-up-card";
+import { MiniMap } from "@/components/map/mini-map";
 import { MeetingTimeline } from "@/components/meeting-timeline";
 import { PersonAvatar } from "@/components/photos/person-avatar";
 import { PersonPhotos } from "@/components/photos/person-photos";
@@ -11,9 +11,15 @@ import { SaveContactButton } from "@/components/save-contact-button";
 import { ScreenHeader } from "@/components/screen-header";
 import { TagList } from "@/components/tags/tag-editor";
 import { buttonVariants } from "@/components/ui/button";
-import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
+import { lineLink, whatsappLink } from "@/lib/contacts/message-links";
 import { getPerson, listMeetings } from "@/lib/data/people";
+import { formatBirthday, formatMetDate, formatShortDate } from "@/lib/format";
 import { cn } from "@/lib/utils";
+
+const actionButton = cn(
+  buttonVariants({ variant: "ghost" }),
+  "h-16 flex-col gap-1 rounded-xl bg-muted text-[0.8125rem] text-primary [&_svg:not([class*='size-'])]:size-4.5",
+);
 
 export default async function PersonPage({ params }: PageProps<"/people/[id]">) {
   const { id } = await params;
@@ -26,7 +32,12 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
   const work = [p.extras.role, p.extras.company].filter(Boolean).join(", ");
   const place = [p.place_name, p.city].filter(Boolean).join(", ");
 
+  const whatsapp = whatsappLink(p.phone);
+  const line = lineLink(p.extras.line);
+  const actions = [p.phone, whatsapp, line].filter(Boolean).length + 1;
+
   const details = [
+    { label: "Phone", value: p.phone, href: p.phone ? `tel:${p.phone.replace(/[^\d+]/g, "")}` : undefined },
     { label: "Birthday", value: birthday },
     { label: "Email", value: p.extras.email, href: p.extras.email ? `mailto:${p.extras.email}` : undefined },
     { label: "In your words", value: p.where_met_text },
@@ -77,21 +88,30 @@ export default async function PersonPage({ params }: PageProps<"/people/[id]">) 
         </p>
       </header>
 
-      <div className={cn("mt-5 grid gap-2", p.phone ? "grid-cols-2" : "grid-cols-1")}>
+      <div className={cn("mt-5 grid gap-2", ["grid-cols-1", "grid-cols-2", "grid-cols-3", "grid-cols-4"][actions - 1])}>
         {p.phone && (
           <a
             href={`tel:${p.phone.replace(/[^\d+]/g, "")}`}
             aria-label={`Call ${p.phone}`}
-            className={cn(
-              buttonVariants({ variant: "ghost" }),
-              "h-16 flex-col gap-1 rounded-xl bg-muted text-[0.8125rem] text-primary [&_svg:not([class*='size-'])]:size-4.5",
-            )}
+            className={actionButton}
           >
             <PhoneIcon aria-hidden strokeWidth={1.9} />
             Call
           </a>
         )}
-        <SaveContactButton person={p} />
+        {whatsapp && (
+          <a href={whatsapp} target="_blank" rel="noopener noreferrer" aria-label={`WhatsApp ${p.full_name}`} className={actionButton}>
+            <MessageCircleIcon aria-hidden strokeWidth={1.9} />
+            WhatsApp
+          </a>
+        )}
+        {line && (
+          <a href={line} target="_blank" rel="noopener noreferrer" aria-label={`Open ${p.full_name} on LINE`} className={actionButton}>
+            <MessageSquareIcon aria-hidden strokeWidth={1.9} />
+            LINE
+          </a>
+        )}
+        <SaveContactButton person={p} short={actions === 4} />
       </div>
 
       <FollowUpCard person={p} />

@@ -143,6 +143,11 @@ try {
   expect(Math.abs(Date.parse(snoozed!.follow_up_date) - Date.parse(weekOn))).toBeLessThanOrEqual(86_400_000);
   pass("an overdue follow-up stays in Coming up, and can be ticked off, undone and snoozed a week");
 
+  // The number is shown, and WhatsApp opens a chat with it (it has a country code).
+  await expect(page.getByRole("link", { name: "+971505550199", exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: `WhatsApp ${name}` })).toHaveAttribute("href", "https://wa.me/971505550199");
+  pass("a profile shows the number and a WhatsApp button for it");
+
   await page.goto(BASE + "/ask", { waitUntil: "networkidle" });
   await page.getByLabel("Your question").fill("Who breeds flamingos?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();

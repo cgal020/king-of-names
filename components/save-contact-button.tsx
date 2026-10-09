@@ -23,7 +23,8 @@ async function jpegBase64(url: string) {
 
 // Saves the person to the phone's contacts as a .vcf, with where and when
 // you met in the note and their photo when there is one.
-export function SaveContactButton({ person, className }: { person: Person; className?: string }) {
+// `short` labels it just "Save", for a row of four buttons on a phone.
+export function SaveContactButton({ person, className, short = false }: { person: Person; className?: string; short?: boolean }) {
   const avatar = useAvatar(person.id);
 
   async function save() {
@@ -58,10 +59,11 @@ export function SaveContactButton({ person, className }: { person: Person; class
     <Button
       variant="ghost"
       onClick={save}
+      aria-label={short ? "Save contact" : undefined}
       className={cn("h-16 flex-col gap-1 rounded-xl bg-muted text-[0.8125rem] text-primary [&_svg:not([class*='size-'])]:size-4.5", className)}
     >
       <ContactRoundIcon aria-hidden strokeWidth={1.9} />
-      Save contact
+      {short ? "Save" : "Save contact"}
     </Button>
   );
 }
