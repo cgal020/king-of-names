@@ -46,7 +46,7 @@ export function AiConsentSheet({ onAgree, onCancel }: { onAgree: () => void; onC
           </li>
           <li>
             <span className="font-medium">The text</span> goes to Anthropic (USA) to pick out names and details.
-            Business card photos and Ask AI questions go there too.
+            Business card photos, the digital card a card&rsquo;s QR code links to, and Ask AI questions go there too.
           </li>
           <li>
             <span className="font-medium">Your location</span> goes to Mapbox to find the place name.

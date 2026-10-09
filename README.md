@@ -80,8 +80,8 @@ npm run invite:create
 npm run lint
 npm run typecheck
 npm test                  # unit tests, offline
-npm run test:integration  # row level security test against the Supabase project in .env.local
-npm run eval:extraction   # 13 sample notes through the real extraction model (costs a few cents)
+npm run test:integration  # row level security against the Supabase project in .env.local, and the card link guard against real DNS
+npm run eval              # the real models: 13 sample notes, Ask questions and digital card pages (costs a few cents)
 npm run check:pwa         # recording, offline queue, shortcut, manifest and install help in Chrome (dev server running)
 npm run check:flows       # Event mode, sign-in screens, failure and empty states, and the Map in Chrome (dev server running)
 ```

@@ -175,8 +175,10 @@ export function PersonForm({
   );
   const updating = duplicates.find((p) => p.id === duplicateChoice);
   // A name printed on a scanned card settles any doubt about the spoken one.
-  const cardHasName = Boolean(merged && card?.details.full_name);
-  const flagName = mode === "review" && nameConfidence !== "high" && !nameTouched && !cardHasName;
+  const cardHasName = Boolean(merged && card?.details.full_name && !card.details.nameIsGuess);
+  // A name guessed from a LinkedIn address needs checking too.
+  const nameGuessed = fromCard("full_name") && Boolean(card?.details.nameIsGuess) && !nameTouched;
+  const flagName = (mode === "review" && nameConfidence !== "high" && !nameTouched && !cardHasName) || nameGuessed;
   // Without a known zone (added by hand) the phone's own is used. It's read
   // on the phone only, so the server and the phone render the same.
   const deviceZone = useSyncExternalStore(noSubscribe, phoneTimeZone, () => null);
@@ -305,7 +307,7 @@ export function PersonForm({
           {flagName && (
             <p id="name-hint" className="mt-2 flex items-center gap-1.5 text-sm font-medium text-warning">
               <CircleAlertIcon className="size-4 shrink-0" aria-hidden />
-              Check the spelling. The name was hard to make out.
+              {nameGuessed ? "Check the name. It was guessed from their LinkedIn address." : "Check the spelling. The name was hard to make out."}
             </p>
           )}
         </div>

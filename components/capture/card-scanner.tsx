@@ -5,10 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { CameraIcon, ImagesIcon, QrCodeIcon, ScanTextIcon, XIcon } from "lucide-react";
-import { useCardResult, type CardResult } from "@/components/capture/card-store";
+import { useCardResult, type CardResult, type CardSource } from "@/components/capture/card-store";
 import { usePhotos } from "@/components/photos/photo-store";
 import { Button } from "@/components/ui/button";
+import { combineDetails } from "@/lib/cards/combine";
 import { detectQr } from "@/lib/cards/detect-qr";
+import { cardLink, nameFromLinkedin } from "@/lib/cards/links";
 import { parseQr, type CardDetails } from "@/lib/cards/parse-qr";
 import { monthName } from "@/lib/format";
 import { authConfigured } from "@/lib/auth/config";
@@ -21,6 +23,11 @@ import { preparePhoto } from "@/lib/photos/prepare";
 import { cn } from "@/lib/utils";
 
 type Phase = "starting" | "live" | "reading" | "result";
+type Still = { url: string; blob: Blob; width: number; height: number };
+
+// Everything read from one card: its QR code (exact), the printed card (AI)
+// and the digital card page its QR links to (AI).
+type Readings = { qr: CardDetails | null; photo: CardDetails | null; page: CardDetails | null };
 
 const noSubscribe = () => () => {};
 
@@ -49,6 +56,37 @@ async function readCardPhoto(blob: Blob): Promise<CardDetails> {
   return body.details as CardDetails;
 }
 
+// The person's own digital card page, read on the server. Null when there's
+// nothing there or it couldn't be reached; the scan still has the rest.
+async function readLinkDetails(url: string): Promise<CardDetails | null> {
+  const response = await fetch("/api/cards/link", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ url }),
+    signal: AbortSignal.timeout(30_000),
+  }).catch(() => null);
+  const body = await response?.json().catch(() => null);
+  return response?.ok ? ((body?.details as CardDetails | null) ?? null) : null;
+}
+
+const hasAny = (d: CardDetails | null): d is CardDetails =>
+  Boolean(d && (d.full_name || d.company || d.role || d.phones.length || d.emails.length || d.websites.length || d.linkedin || d.address));
+
+// Most trusted first: the QR's exact text, then the printed card, then the
+// page. LinkedIn pages can't be read, but their address often spells the name.
+function toResult({ qr, photo, page }: Readings): CardResult {
+  let details = combineDetails([qr, photo, page].filter((d): d is CardDetails => Boolean(d)));
+  if (!details.full_name && details.linkedin) {
+    const guess = nameFromLinkedin(details.linkedin);
+    if (guess) details = { ...details, full_name: guess, nameIsGuess: true };
+  }
+  const sources: CardSource[] = [];
+  if (qr) sources.push("qr");
+  if (hasAny(photo)) sources.push("photo");
+  if (hasAny(page)) sources.push("link");
+  return { details, sources, service: qr?.digitalCard?.service ?? null };
+}
+
 export function CardScanner() {
   const router = useRouter();
   // The card photo belongs to whatever the card goes into next.
@@ -61,30 +99,49 @@ export function CardScanner() {
   // Where the card was scanned, started with the scan so it's ready by "Add to note".
   const locating = useRef<Promise<LocateResult> | null>(null);
   const [phase, setPhase] = useState<Phase>("starting");
-  const [still, setStill] = useState<{ url: string; blob: Blob; width: number; height: number } | null>(null);
-  const [result, setLocalResult] = useState<CardResult | null>(null);
+  const [still, setStill] = useState<Still | null>(null);
+  const [readings, setReadings] = useState<Readings | null>(null);
   const [cameraDenied, setCameraDenied] = useState(false);
-  // Set while photographing a card whose QR held only a link; the link is
-  // kept and the photo supplies the details.
-  const [linkDetails, setLinkDetails] = useState<CardDetails | null>(null);
+  // Set while photographing a card whose QR gave no name: what was read so
+  // far is kept and the new photo is read into it.
+  const [carried, setCarried] = useState<Readings | null>(null);
+  const result = readings ? toResult(readings) : null;
 
-  const showResult = useCallback(
-    (details: CardDetails, source: CardResult["source"]) => {
+  const fallback = supported === false || cameraDenied;
+
+  // Reads everything the card offers at once. A QR code holding a whole
+  // contact is exact, so nothing else is needed; otherwise the photo is read
+  // by the AI and, if the QR links to their digital card, so is that page.
+  const readCard = useCallback(
+    async (image: Still, qrText: string | null) => {
+      const base = carried;
+      setCarried(null);
+      const qr = base ? base.qr : qrText ? parseQr(qrText).details : null;
+      let next: Readings | null;
+      if (!base && qr?.full_name) next = { qr, photo: null, page: null };
+      else if (!authConfigured()) {
+        // The preview has no server: a QR shows what it holds, and photos
+        // read as the sample card.
+        next = !base && qr ? { qr, photo: null, page: null } : { qr, photo: await mockReadCard(), page: base?.page ?? null };
+      } else {
+        const link = !base && qr ? cardLink(qr) : null;
+        const [photo, page] = await Promise.all([
+          readCardPhoto(image.blob).catch(() => null),
+          link ? readLinkDetails(link) : Promise.resolve(base?.page ?? null),
+        ]);
+        next = qr || photo ? { qr, photo, page } : null;
+      }
+      if (!next) {
+        toast.error("Couldn’t read that card", { description: "Try again with the whole card in the frame, in good light." });
+        setStill(null);
+        setPhase(fallback ? "starting" : "live");
+        return;
+      }
       navigator.vibrate?.(30);
-      const merged = linkDetails
-        ? {
-            ...details,
-            digitalCard: details.digitalCard ?? linkDetails.digitalCard,
-            linkedin: details.linkedin ?? linkDetails.linkedin,
-            line: details.line ?? linkDetails.line,
-            websites: [...new Set([...details.websites, ...linkDetails.websites])],
-          }
-        : details;
-      setLinkDetails(null);
-      setLocalResult({ details: merged, source });
+      setReadings(next);
       setPhase("result");
     },
-    [linkDetails],
+    [carried, fallback],
   );
 
   // Start the rear camera.
@@ -110,10 +167,11 @@ export function CardScanner() {
     };
   }, [supported]);
 
-  // Look for a QR code a few times a second while the camera is live.
+  // Look for a QR code a few times a second while the camera is live. When
+  // one is found, that frame is the card's photo too.
   useEffect(() => {
-    // While photographing a link-only card, the QR would just be found again.
-    if (phase !== "live" || linkDetails) return;
+    // While photographing a card already scanned, the QR would just be found again.
+    if (phase !== "live" || carried) return;
     let busy = false;
     const id = window.setInterval(async () => {
       const video = videoRef.current;
@@ -122,34 +180,31 @@ export function CardScanner() {
       try {
         const text = await detectQr(video);
         if (text) {
-          grabFrame(video).then(setStill);
-          showResult(parseQr(text).details, "qr");
+          window.clearInterval(id);
+          locating.current = locateOnce();
+          const frame = await grabFrame(video);
+          setStill(frame);
+          setPhase("reading");
+          await readCard(frame, text);
         }
       } finally {
         busy = false;
       }
     }, 300);
     return () => window.clearInterval(id);
-  }, [phase, showResult, linkDetails]);
+  }, [phase, readCard, carried]);
 
-  async function readStill(image: { url: string; blob: Blob; width: number; height: number }) {
+  async function readStill(image: Still) {
     locating.current = locateOnce();
     setStill(image);
     setPhase("reading");
-    if (!linkDetails) {
+    let text: string | null = null;
+    if (!carried) {
       const bitmap = await createImageBitmap(image.blob);
-      const text = await detectQr(bitmap).catch(() => null);
+      text = await detectQr(bitmap).catch(() => null);
       bitmap.close();
-      if (text) return showResult(parseQr(text).details, "qr");
     }
-    if (!authConfigured()) return showResult(await mockReadCard(), "photo");
-    try {
-      showResult(await readCardPhoto(image.blob), "photo");
-    } catch {
-      toast.error("Couldn’t read that card", { description: "Try again with the whole card in the frame, in good light." });
-      setStill(null);
-      setPhase(fallback ? "starting" : "live");
-    }
+    await readCard(image, text);
   }
 
   async function takePhoto() {
@@ -208,19 +263,17 @@ export function CardScanner() {
     router.push(authConfigured() ? "/people/new" : "/capture/review");
   }
 
-  const fallback = supported === false || cameraDenied;
-
   function scanAgain() {
-    setLinkDetails(null);
-    setLocalResult(null);
+    setCarried(null);
+    setReadings(null);
     setStill(null);
     setPhase(fallback ? "starting" : "live");
   }
 
-  // The QR held only a link: keep it and take a photo of the card for the details.
+  // No name yet: keep what was read and take a photo of the card for the rest.
   function photographCard() {
-    setLinkDetails(result?.details ?? null);
-    setLocalResult(null);
+    setCarried(readings);
+    setReadings(null);
     setStill(null);
     setPhase(fallback ? "starting" : "live");
     if (fallback) {
@@ -268,7 +321,7 @@ export function CardScanner() {
             <p className="absolute inset-x-6 bottom-6 text-center text-sm text-white/85">
               {phase === "starting"
                 ? "Starting the camera…"
-                : linkDetails
+                : carried
                   ? "Fit the card in the frame and take a photo."
                   : "Fit the card in the frame. QR codes are read automatically."}
             </p>
@@ -336,6 +389,13 @@ export function CardScanner() {
   );
 }
 
+// "Read from the QR code, the card and their Blinq page".
+function readFrom({ sources, service }: CardResult) {
+  const names = sources.map((s) => (s === "qr" ? "the QR code" : s === "photo" ? "the card" : `their ${service ?? "online"} page`));
+  const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}` : (names[0] ?? "the card");
+  return `Read from ${list}`;
+}
+
 function grabFrame(video: HTMLVideoElement) {
   const canvas = document.createElement("canvas");
   const scale = Math.min(1, 2048 / Math.max(video.videoWidth, video.videoHeight));
@@ -366,12 +426,13 @@ function ResultSheet({
   onPhotograph: () => void;
 }) {
   const d = result.details;
+  const preview = !authConfigured();
+  const fromQr = result.sources.includes("qr");
   // Most digital-card QR codes hold only a profile link, not the details.
-  const linkOnly =
-    result.source === "qr" && !d.full_name && Boolean(d.digitalCard || d.linkedin || d.line || d.websites.length);
+  const noName = fromQr && !d.full_name && Boolean(d.digitalCard || d.linkedin || d.line || d.websites.length);
   const rows = [
     { label: "Digital card", value: d.digitalCard ? `${d.digitalCard.service}\n${d.digitalCard.url}` : null },
-    { label: "Name", value: d.full_name },
+    { label: "Name", value: d.full_name && d.nameIsGuess ? `${d.full_name}\nGuessed from their LinkedIn address` : d.full_name },
     { label: "Company", value: d.company },
     { label: "Role", value: d.role },
     { label: d.phones.length > 1 ? "Phones" : "Phone", value: d.phones.join("\n") },
@@ -391,16 +452,11 @@ function ResultSheet({
     <div className="absolute inset-x-0 bottom-0 max-h-[75%] overflow-y-auto sheet rounded-t-4xl bg-popover px-5 pt-5 text-popover-foreground shadow-sheet pb-[max(1.25rem,env(safe-area-inset-bottom))] text-foreground shadow-2xl">
       <span className="mx-auto mb-3 block h-1 w-9 rounded-full bg-border" aria-hidden />
       <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        {result.source === "qr" ? (
-          <>
-            <QrCodeIcon className="size-4 text-primary" aria-hidden /> Read from the QR code
-          </>
-        ) : (
-          <>
-            <ScanTextIcon className="size-4 text-primary" aria-hidden /> Read from the card
-            {!authConfigured() && <> &middot; sample result in this preview</>}
-          </>
-        )}
+        {fromQr ? <QrCodeIcon className="size-4 text-primary" aria-hidden /> : <ScanTextIcon className="size-4 text-primary" aria-hidden />}
+        <span>
+          {readFrom(result)}
+          {preview && result.sources.includes("photo") && <> &middot; sample result in this preview</>}
+        </span>
       </p>
       {rows.length === 0 ? (
         <p className="py-6 text-center text-muted-foreground">Nothing readable on this card. Try again closer up.</p>
@@ -414,13 +470,15 @@ function ResultSheet({
           ))}
         </dl>
       )}
-      {linkOnly && (
+      {noName && (
         <div className="mt-4 rounded-2xl bg-muted p-4">
           <p className="text-[0.95rem] font-medium">
-            This QR only links to their {d.digitalCard?.service ?? "online"} profile
+            {preview ? `This QR only links to their ${d.digitalCard?.service ?? "online"} profile` : "No name found yet"}
           </p>
           <p className="mt-1 text-sm text-muted-foreground">
-            Take a photo of the paper card to add their name, number and company.
+            {preview
+              ? "Take a photo of the paper card to add their name, number and company."
+              : "Take a photo of the paper card, flat and in good light, to add their name, number and company."}
           </p>
           <Button variant="outline" size="touch" className="mt-3 w-full" onClick={onPhotograph}>
             <CameraIcon aria-hidden />
@@ -433,7 +491,8 @@ function ResultSheet({
           Scan again
         </Button>
         <Button size="touch-lg" className="flex-[2]" onClick={onUse} disabled={rows.length === 0}>
-          Add to note
+          {/* The preview adds the card to its sample note; otherwise it starts a new person. */}
+          {preview ? "Add to note" : "Add this person"}
         </Button>
       </div>
     </div>

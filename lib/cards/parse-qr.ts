@@ -18,13 +18,18 @@ export type CardDetails = {
   address: string | null;
   notes: string | null;
   birthday: { day: number | null; month: number; year: number | null } | null;
+  // Set when the name was only guessed (from a LinkedIn address), so the form
+  // asks to check it.
+  nameIsGuess?: boolean;
 };
 
 // Digital business card services whose QR codes are profile links by default
-// (checked October 2026, docs/research/notes/gap_new_features.md).
+// (checked October 2026, docs/research/notes/gap_new_features.md), and the
+// link-in-bio pages people hand out the same way.
 const DIGITAL_CARD_HOSTS: Record<string, string> = {
   "blinq.me": "Blinq",
   "popl.co": "Popl",
+  "poplme.co": "Popl",
   "hihello.me": "HiHello",
   "hihello.com": "HiHello",
   "linqapp.com": "Linq",
@@ -33,9 +38,12 @@ const DIGITAL_CARD_HOSTS: Record<string, string> = {
   "tapt.io": "Tapt",
   "mobilocard.com": "Mobilo",
   "thehaystackapp.com": "Haystack",
+  "linktr.ee": "Linktree",
+  "beacons.ai": "Beacons",
+  "about.me": "about.me",
 };
 
-function digitalCardService(host: string) {
+export function digitalCardService(host: string) {
   const match = Object.keys(DIGITAL_CARD_HOSTS).find((h) => host === h || host.endsWith(`.${h}`));
   return match ? DIGITAL_CARD_HOSTS[match] : null;
 }

@@ -1,5 +1,6 @@
-// Business-card reading: the schema the vision model fills, and the mapping to
-// the same CardDetails a QR code produces. No network here, so it's testable.
+// Business-card reading: the schemas the model fills from a card photo or a
+// digital card's page, and the mapping to the same CardDetails a QR code
+// produces. No network here, so it's testable.
 import { z } from "zod";
 import { normalizePhone, type CardDetails } from "@/lib/cards/parse-qr";
 
@@ -46,3 +47,32 @@ export function cardReadingToDetails(raw: unknown): CardDetails {
     birthday: null,
   };
 }
+
+// A digital card's page says what kind of page it is, so a company homepage or
+// a sign-in wall can't fill in someone's details.
+export const LinkPageSchema = CardSchema.extend({
+  page_kind: z
+    .enum(["personal_card", "company_site", "other"])
+    .describe("personal_card: one person's digital business card or profile page. company_site: a company's own site. other: anything else, including errors and sign-in pages."),
+});
+
+export function linkReadingToDetails(raw: unknown): CardDetails | null {
+  const reading = LinkPageSchema.parse(raw);
+  if (reading.page_kind === "other") return null;
+  const details = cardReadingToDetails(reading);
+  if (reading.page_kind === "personal_card") return details;
+  // A company site: only the company name, never its switchboard or inbox.
+  return details.company ? { ...cardReadingToDetails({ ...EMPTY_READING, company: details.company }) } : null;
+}
+
+const EMPTY_READING: CardReading = {
+  full_name: null,
+  company: null,
+  role: null,
+  phones: [],
+  emails: [],
+  websites: [],
+  linkedin: null,
+  address: null,
+  other_details: [],
+};

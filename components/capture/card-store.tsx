@@ -7,7 +7,10 @@ import type { CardDetails } from "@/lib/cards/parse-qr";
 // (Review in the preview, Add someone otherwise), with the id its card photo
 // is held under until that person is saved.
 
-export type CardResult = { details: CardDetails; source: "qr" | "photo"; photoDraftId?: string };
+// Where the details came from: the QR code, the printed card, and the
+// digital card page the QR links to (named by its service, e.g. "Blinq").
+export type CardSource = "qr" | "photo" | "link";
+export type CardResult = { details: CardDetails; sources: CardSource[]; service?: string | null; photoDraftId?: string };
 
 type CardStore = {
   result: CardResult | null;

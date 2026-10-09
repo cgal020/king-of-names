@@ -7,6 +7,7 @@ import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { chromium, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
+import QRCode from "qrcode";
 
 const BASE = process.env.PWA_BASE_URL ?? "http://localhost:3000";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -122,7 +123,7 @@ try {
   await cardChooser.setFiles({ name: "card.png", mimeType: "image/png", buffer: cardPng });
   await expect(page.getByText("Read from the card")).toBeVisible({ timeout: 30_000 });
   await expect(page.getByText("Kenji Watanabe")).toBeVisible();
-  await page.getByRole("button", { name: "Add to note" }).click();
+  await page.getByRole("button", { name: "Add this person" }).click();
   await page.waitForURL("**/people/new", { waitUntil: "commit" });
   // The label reads "Name From card".
   await expect(page.locator("#full_name")).toHaveValue("Kenji Watanabe");
@@ -133,6 +134,50 @@ try {
     .poll(async () => (await admin.from("photos").select("kind").eq("person_id", kenjiId)).data?.map((p) => p.kind), { timeout: 20_000 })
     .toEqual(["card"]);
   pass("a photographed card is read by the AI, fills in Add someone, and the card photo is saved with them");
+
+  // A photo of a card with a QR code on it: both are read and combined.
+  const withQr = async (text: string, card: boolean) => {
+    const qr = await QRCode.toString(text, { type: "svg", margin: 2, width: 300 });
+    const shot = await context.newPage();
+    await shot.setViewportSize({ width: 1200, height: card ? 1250 : 500 });
+    await shot.setContent(
+      `<body style="margin:0;background:#ddd">${card ? `<img src="${BASE}/mock/photos/card-kenji.svg" width="1200" height="900" style="display:block">` : ""}` +
+        `<div style="width:300px;margin:20px auto;background:#fff">${qr}</div></body>`,
+      { waitUntil: "networkidle" },
+    );
+    const png = await shot.screenshot({ fullPage: true });
+    await shot.close();
+    await page.goto(BASE + "/capture/card", { waitUntil: "networkidle" });
+    const [chooser] = await Promise.all([page.waitForEvent("filechooser"), page.getByRole("button", { name: "Library" }).click()]);
+    await chooser.setFiles({ name: "card.png", mimeType: "image/png", buffer: png });
+  };
+  await withQr("https://andamanblue.example/charters", true);
+  await expect(page.getByText("Read from the QR code and the card")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText("Kenji Watanabe")).toBeVisible();
+  await expect(page.getByText("https://andamanblue.example/charters")).toBeVisible();
+  pass("a card with a QR code on it gives both: the printed details and the QR's link");
+
+  // A LinkedIn QR alone: the page can't be read, but the address gives a name to check.
+  await withQr("https://www.linkedin.com/in/priya-raman-5c2d9e1f?utm_source=share", false);
+  await expect(page.getByText("Read from the QR code", { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/Guessed from their LinkedIn address/)).toBeVisible();
+  await page.getByRole("button", { name: "Add this person" }).click();
+  await page.waitForURL("**/people/new", { waitUntil: "commit" });
+  await expect(page.locator("#full_name")).toHaveValue("Priya Raman");
+  await expect(page.getByText("Check the name. It was guessed from their LinkedIn address.")).toBeVisible();
+  pass("a LinkedIn QR fills in the name from its address and asks to check it");
+
+  // The link reader opens only digital cards and contact files, on public addresses.
+  const readLink = (link: string) => page.request.post(BASE + "/api/cards/link", { data: { url: link } });
+  for (const link of ["http://localtest.me/card.vcf", "https://andamanblue.example/charters", "http://169.254.169.254/latest/card.vcf"]) {
+    const response = await readLink(link);
+    expect(response.status()).toBe(200);
+    expect((await response.json()).details).toBeNull();
+  }
+  const outsider = await browser.newContext();
+  expect((await outsider.request.post(BASE + "/api/cards/link", { data: { url: "https://blinq.me/x" } })).status()).toBe(401);
+  await outsider.close();
+  pass("the link reader refuses other sites, this machine and signed-out callers");
 
   await page.goto(BASE + "/settings", { waitUntil: "networkidle" });
   await expect(page.getByText(username)).toBeVisible();

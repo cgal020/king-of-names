@@ -212,14 +212,16 @@ export function SettingsScreen({
           </p>
           <p>
             Photos are stored the same way. Photos of business cards are sent to Anthropic to read the details off
-            the card; other photos, including photos of people, are never sent to an AI. When you use Ask AI, your
+            the card; other photos, including photos of people, are never sent to an AI. If a card&rsquo;s QR code
+            links to the person&rsquo;s own digital card (Blinq, Popl and similar), the app opens that page and
+            Anthropic reads the details from it; other links are kept, not opened. When you use Ask AI, your
             question and the notes needed to answer it are sent to Anthropic. Nothing else about you is sent to
             these providers.
           </p>
           <p>You can export everything or delete your account at any time.</p>
           <ul className="list-disc space-y-1 pl-5 text-foreground marker:text-primary">
             <li>Your notes are never used to train AI.</li>
-            <li>No enrichment: we never look people up on LinkedIn, the web or data brokers.</li>
+            <li>No enrichment: we never look people up on LinkedIn, the web or data brokers. When a card’s QR code links to their own digital card, only that page is read.</li>
             <li>No face recognition, ever.</li>
             <li>Only you can see your people. Invited accounts are completely separate.</li>
           </ul>
